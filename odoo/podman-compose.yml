@@ -1,0 +1,87 @@
+name: pepito_odoo
+
+services:
+  db_pepito:
+    image: docker.io/library/postgres:17
+    container_name: odoo_pepito_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=odoo_user_pepito
+      - POSTGRES_PASSWORD=Db_Pass_Pepito_Z
+    volumes:
+      - odoo_pepito_db_data:/var/lib/postgresql/data
+    command: >
+      postgres
+        -c max_connections=200
+        -c shared_buffers=256MB
+        -c effective_cache_size=768MB
+        -c work_mem=4MB
+        -c synchronous_commit=off
+    networks:
+      - pepito_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo_user_pepito"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web_pepito:
+    image: docker.io/library/odoo:19
+    container_name: odoo_pepito_app
+    restart: unless-stopped
+    depends_on:
+      db_pepito:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8071:8069"
+      - "127.0.0.1:8074:8072"
+    volumes:
+      - ./config:/etc/odoo
+      - ./addons:/mnt/extra-addons
+      - odoo_pepito_web_data:/var/lib/odoo
+    command: -c /etc/odoo/odoo.conf
+    environment:
+      - HOST=db_pepito
+      - USER=odoo_user_pepito
+      - PASSWORD=Db_Pass_Pepito_Z
+    networks:
+      - pepito_internal
+      - npm_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8069/web/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+  browserless_pepito:
+    image: ghcr.io/browserless/chromium:latest
+    container_name: odoo_pepito_browserless
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3002:3000"
+    environment:
+      TOKEN: "localdev"
+      TIMEOUT: "30000"
+      CONCURRENT: "3"
+      EXIT_ON_HEALTH_FAILURE: "true"
+    networks:
+      - pepito_internal
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/json/version || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  odoo_pepito_web_data:
+  odoo_pepito_db_data:
+
+networks:
+  pepito_internal:
+    driver: bridge
+    internal: true
+  npm_network:
+    external: true

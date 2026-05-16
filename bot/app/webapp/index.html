@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PepitoPet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/webapp/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ── Loading ─────────────────────────────────────────── -->
+    <div id="state-loading" class="fullscreen-state">
+      <div class="paw-loader">
+        <div class="loader-ring"></div>
+        <span class="loader-paw">🐾</span>
+      </div>
+      <p id="loading-text" class="loading-text">Загружаем...</p>
+    </div>
+
+    <!-- ── Error ──────────────────────────────────────────── -->
+    <div id="state-error" class="fullscreen-state hidden">
+      <div class="state-emoji">😔</div>
+      <h3 class="state-title" id="error-title">Что-то пошло не так</h3>
+      <p class="state-subtitle" id="error-msg">Попробуй открыть дашборд снова</p>
+      <button class="btn-primary" id="btn-retry">Попробовать снова</button>
+    </div>
+
+    <!-- ── Tab panels ─────────────────────────────────────── -->
+    <div id="tabs-container" class="hidden">
+
+      <!-- ═══ TAB: Питомец (dashboard + profile merged) ═══ -->
+      <div id="tab-pet" class="tab-panel">
+
+        <section class="hero">
+          <div class="hero-top">
+            <div>
+              <p id="hero-label" class="hero-label">Привет,</p>
+              <h1 class="hero-name" id="hero-user-name">—</h1>
+            </div>
+            <div id="premium-badge" class="premium-pill hidden">⭐ Premium</div>
+          </div>
+          <div id="pet-hero" class="pet-hero hidden">
+            <div class="pet-avatar-wrap">
+              <span class="pet-avatar-emoji">🐶</span>
+            </div>
+            <div class="pet-hero-body">
+              <div class="pet-hero-name" id="pet-hero-name"></div>
+              <div class="pet-hero-meta" id="pet-hero-meta"></div>
+            </div>
+            <div id="streak-chip" class="streak-chip hidden">
+              <span class="streak-fire">🏋️</span>
+              <span id="streak-value"></span>
+            </div>
+          </div>
+        </section>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-done">0</div>
+            <div id="stat-done-lbl" class="stat-label">выполнено</div>
+            <div id="stat-done-sub" class="stat-sub">сегодня</div>
+          </div>
+          <div class="stat-card stat-card--warm">
+            <div class="stat-value" id="stat-days">0</div>
+            <div id="stat-days-lbl" class="stat-label">тренировок</div>
+            <div id="stat-days-sub" class="stat-sub">всего</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span id="card-progress-title" class="card-title">Прогресс дня</span>
+            <span class="progress-fraction" id="progress-fraction">0 / 0</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="week-chart" id="week-chart" aria-label="Активность за 7 дней"></div>
+        </div>
+
+        <div class="card tasks-card">
+          <div class="card-header">
+            <span id="card-training-title" class="card-title">Тренировка сегодня</span>
+            <span class="tasks-badge" id="tasks-badge"></span>
+          </div>
+          <div id="tasks-list"></div>
+          <div id="state-no-plan" class="empty-block hidden">
+            <div class="empty-emoji">🐾</div>
+            <p id="no-plan-title" class="empty-title">Нет плана на сегодня</p>
+            <p id="no-plan-hint" class="empty-hint">Открой бота и создай тренировку</p>
+          </div>
+          <div id="state-all-done" class="all-done-block hidden">
+            <div class="done-emoji">🎉</div>
+            <p id="all-done-title" class="done-title">Все задачи выполнены!</p>
+            <p id="all-done-sub" class="done-sub">Отличная тренировка сегодня</p>
+          </div>
+        </div>
+
+        <!-- Profile form section -->
+        <div class="section-divider"></div>
+        <h3 id="profile-heading" class="section-heading">✏️ Профиль питомца</h3>
+
+        <div id="profile-no-pet" class="card empty-block hidden">
+          <div class="empty-emoji">🐾</div>
+          <p id="no-pet-title" class="empty-title">Профиль не заполнен</p>
+          <p id="no-pet-hint" class="empty-hint">Пройди онбординг в боте, чтобы заполнить данные питомца</p>
+        </div>
+
+        <div id="profile-form-wrap" class="card hidden">
+          <div class="form-group">
+            <label id="lbl-pet-name" class="form-label" for="pf-name">Имя питомца</label>
+            <input type="text" id="pf-name" class="form-input" maxlength="30" autocomplete="off" placeholder="Бруно">
+            <div class="field-error" id="err-name"></div>
+          </div>
+
+          <div class="form-group">
+            <label id="lbl-breed" class="form-label" for="pf-breed">Порода</label>
+            <input type="text" id="pf-breed" class="form-input" maxlength="40" autocomplete="off" placeholder="Лабрадор-ретривер">
+          </div>
+
+          <div class="form-group">
+            <label id="lbl-goal" class="form-label" for="pf-goal">Цель тренировок</label>
+            <textarea id="pf-goal" class="form-input form-textarea" maxlength="150" placeholder="Научить основным командам и социализировать..."></textarea>
+            <div class="field-error" id="err-goal"></div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group form-group--half">
+              <label id="lbl-level" class="form-label" for="pf-level">Уровень</label>
+              <select id="pf-level" class="form-input form-select">
+                <option value="">— выбери —</option>
+                <option value="1">1 — Не знает команд</option>
+                <option value="2">2 — Знает базовые</option>
+                <option value="3">3 — Слушается дома</option>
+                <option value="4">4 — При отвлечениях</option>
+                <option value="5">5 — Отлично обучен</option>
+              </select>
+            </div>
+            <div class="form-group form-group--half">
+              <label id="lbl-age" class="form-label" for="pf-age">Возраст</label>
+              <select id="pf-age" class="form-input form-select">
+                <option value="">— выбери —</option>
+                <option value="Щенок (до 4 мес)">до 4 мес</option>
+                <option value="Щенок (4–12 мес)">4–12 мес</option>
+                <option value="Молодой (1–3 года)">1–3 года</option>
+                <option value="Взрослый (3–7 лет)">3–7 лет</option>
+                <option value="Пожилой (7+ лет)">7+ лет</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-primary btn-full" id="btn-save-pet" data-label="Сохранить изменения">Сохранить изменения</button>
+            <div class="save-status" id="save-pet-status"></div>
+          </div>
+        </div>
+
+      </div><!-- /tab-pet -->
+
+      <!-- ═══ TAB: Настройки ═══ -->
+      <div id="tab-settings" class="tab-panel hidden">
+
+        <h2 id="settings-heading" class="tab-heading">⚙️ Настройки</h2>
+
+        <div class="card">
+          <div class="card-header">
+            <span id="card-notif-title" class="card-title">Уведомления</span>
+          </div>
+
+          <div class="form-group">
+            <label id="lbl-reminder" class="form-label" for="st-reminder">Время напоминания</label>
+            <input type="text" id="st-reminder" class="form-input" placeholder="09:30" maxlength="5" autocomplete="off" inputmode="numeric">
+            <div id="hint-reminder-tz" class="field-hint">Местное время — в выбранном часовом поясе ниже</div>
+            <div class="field-error" id="err-reminder"></div>
+          </div>
+
+          <div class="form-group">
+            <label id="lbl-tz" class="form-label" for="st-tz">Часовой пояс</label>
+            <select id="st-tz" class="form-input form-select">
+              <option value="UTC-12">UTC-12 — Линия перемены дат</option>
+              <option value="UTC-11">UTC-11 — Самоа</option>
+              <option value="UTC-10">UTC-10 — Гавайи</option>
+              <option value="UTC-9">UTC-9 — Аляска</option>
+              <option value="UTC-8">UTC-8 — Лос-Анджелес, Ванкувер</option>
+              <option value="UTC-7">UTC-7 — Денвер, Феникс</option>
+              <option value="UTC-6">UTC-6 — Чикаго, Мехико</option>
+              <option value="UTC-5">UTC-5 — Нью-Йорк, Богота</option>
+              <option value="UTC-4">UTC-4 — Каракас, Манаус</option>
+              <option value="UTC-3">UTC-3 — Бразилиа, Буэнос-Айрес</option>
+              <option value="UTC-2">UTC-2 — Среднеатлантическое</option>
+              <option value="UTC-1">UTC-1 — Азорские острова</option>
+              <option value="UTC">UTC — Лондон, Рейкьявик</option>
+              <option value="UTC+1">UTC+1 — Берлин, Париж, Варшава</option>
+              <option value="UTC+2">UTC+2 — Калининград, Каир</option>
+              <option value="UTC+3">UTC+3 — Москва, Минск, Стамбул</option>
+              <option value="UTC+4">UTC+4 — Баку, Самара, Дубай</option>
+              <option value="UTC+5">UTC+5 — Екатеринбург, Ташкент</option>
+              <option value="UTC+6">UTC+6 — Омск, Астана</option>
+              <option value="UTC+7">UTC+7 — Красноярск, Бангкок</option>
+              <option value="UTC+8">UTC+8 — Иркутск, Пекин, Сингапур</option>
+              <option value="UTC+9">UTC+9 — Токио, Сеул, Якутск</option>
+              <option value="UTC+10">UTC+10 — Владивосток, Сидней</option>
+              <option value="UTC+11">UTC+11 — Магадан, Сахалин</option>
+              <option value="UTC+12">UTC+12 — Камчатка, Окленд</option>
+              <option value="UTC+13">UTC+13 — Самоа (лет. время)</option>
+              <option value="UTC+14">UTC+14 — Острова Лайн</option>
+            </select>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-primary btn-full" id="btn-save-settings" data-label="Сохранить">Сохранить</button>
+            <div class="save-status" id="save-settings-status"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span id="card-lang-title" class="card-title">Язык интерфейса бота</span>
+          </div>
+          <div class="lang-grid" id="lang-grid">
+            <button class="lang-chip" data-lang="ru">🇷🇺 Русский</button>
+            <button class="lang-chip" data-lang="en">🇬🇧 English</button>
+            <button class="lang-chip" data-lang="de">🇩🇪 Deutsch</button>
+            <button class="lang-chip" data-lang="fr">🇫🇷 Français</button>
+            <button class="lang-chip" data-lang="es">🇲🇽 Español</button>
+            <button class="lang-chip" data-lang="pt">🇧🇷 Português</button>
+          </div>
+          <div class="save-status" id="save-lang-status"></div>
+        </div>
+
+        <div id="premium-hint-card" class="card premium-hint-card hidden">
+          <div class="premium-hint-top">
+            <span class="premium-hint-icon">🔮</span>
+            <div class="premium-hint-text-wrap">
+              <div id="prem-hint-title" class="premium-hint-title">Расширенная аналитика</div>
+              <div id="prem-hint-sub" class="premium-hint-sub">Доступно в Premium</div>
+            </div>
+            <span class="premium-hint-lock">🔒</span>
+          </div>
+          <p id="prem-hint-desc" class="premium-hint-desc">Глубокий AI-анализ прогресса, персональные рекомендации для питомца и детальная статистика.</p>
+          <button class="btn-secondary" id="btn-premium-hint">Узнать больше в боте</button>
+        </div>
+
+      </div><!-- /tab-settings -->
+
+      <!-- ═══ TAB: Награды ═══ -->
+      <div id="tab-rewards" class="tab-panel hidden">
+
+        <h2 id="rewards-heading" class="tab-heading">🎁 Награды</h2>
+
+        <!-- Referral center -->
+        <div class="card">
+          <div class="card-header">
+            <span id="card-invite-title" class="card-title">Позови друга</span>
+          </div>
+          <div class="ref-counter-row">
+            <span class="ref-count-num" id="ref-count">0</span>
+            <span id="ref-friends-lbl" class="ref-count-label">друзей приведено</span>
+          </div>
+          <div class="milestone-track" id="milestone-track"></div>
+          <div id="ref-progress-hint" class="ref-progress-hint"></div>
+          <div id="ref-link-wrap" class="hidden">
+            <div class="ref-link-box" id="ref-link-text"></div>
+            <div class="ref-actions-row">
+              <button class="btn-ref" id="btn-copy-ref">📋 Скопировать</button>
+              <button class="btn-ref" id="btn-share-ref">📤 Поделиться</button>
+            </div>
+            <div class="save-status" id="ref-copy-status"></div>
+          </div>
+          <div id="ref-no-link" class="ref-no-link hidden">
+            Открой <b>🐾 Позови друга</b> в боте, чтобы получить ссылку.
+          </div>
+        </div>
+
+        <!-- How referrals work -->
+        <div class="card how-it-works-card">
+          <div class="card-header">
+            <span id="how-works-title" class="card-title">Как это работает</span>
+          </div>
+          <ul class="how-list">
+            <li id="how-step-1">Поделись ссылкой с другом</li>
+            <li id="how-step-2">Друг регистрируется и заполняет профиль питомца</li>
+            <li id="how-step-3">Вы оба получаете +3 дня Premium бесплатно</li>
+            <li id="how-step-4">Приглашай больше — получай milestone-бонусы!</li>
+          </ul>
+        </div>
+
+        <!-- Premium upsell card (non-premium) -->
+        <div id="premium-upsell-card" class="premium-card premium-card--upsell hidden">
+          <div class="prem-top">
+            <span class="prem-icon">🔮</span>
+            <span class="prem-label">PEPITO PREMIUM</span>
+          </div>
+          <ul class="prem-benefits">
+            <li id="prem-ben-1">♾️ Безлимитный AI-кинолог</li>
+            <li id="prem-ben-2">🧠 Глубокий анализ прогресса</li>
+            <li id="prem-ben-3">🎥 Анализ видео и 🎤 голосовых кинологом</li>
+            <li id="prem-ben-4">🎁 Персональные рекомендации лакомств</li>
+          </ul>
+          <button class="btn-primary btn-full btn-prem-buy" id="btn-buy-premium">⭐ Получить Premium</button>
+        </div>
+
+        <!-- Premium active card -->
+        <div id="premium-active-card" class="premium-card premium-card--active hidden">
+          <div class="prem-top">
+            <span class="prem-icon">⭐</span>
+            <span id="prem-active-lbl" class="prem-label prem-label--active">PREMIUM АКТИВЕН</span>
+          </div>
+          <div class="prem-expires" id="prem-expires-text"></div>
+          <div class="prem-bar-track">
+            <div class="prem-bar-fill" id="prem-bar-fill"></div>
+          </div>
+          <div id="prem-expiry-warn" class="prem-expiry-warn hidden">⚠️ Истекает скоро — продли в боте</div>
+        </div>
+
+        <!-- Shop -->
+        <div class="card">
+          <div class="card-header">
+            <span id="card-shop-title" class="card-title">Магазин лакомств</span>
+          </div>
+          <div class="shop-cards-scroll" id="shop-cards"></div>
+        </div>
+
+      </div><!-- /tab-rewards -->
+
+      <!-- ═══ TAB: Кинолог ═══ -->
+      <div id="tab-coach" class="tab-panel hidden">
+
+        <div class="coach-header">
+          <h2 id="coach-heading" class="tab-heading">💬 Консультации</h2>
+          <p id="coach-subheading" class="coach-header-sub">История диалогов с AI-кинологом</p>
+        </div>
+
+        <div id="coach-threads-list"></div>
+
+        <div id="coach-empty" class="coach-empty hidden">
+          <span class="coach-empty-icon">🧠</span>
+          <p id="coach-empty-title" class="coach-empty-title">Консультаций пока нет</p>
+          <p id="coach-empty-hint" class="coach-empty-hint">Задайте вопрос AI-кинологу в боте — темы сохраняются здесь как ценные записи</p>
+        </div>
+
+        <div id="coach-loading" class="coach-loading hidden">
+          <div class="paw-loader" style="width:36px;height:36px;">
+            <div class="loader-ring"></div>
+            <span class="loader-paw" style="font-size:1rem;">🐾</span>
+          </div>
+        </div>
+
+      </div><!-- /tab-coach -->
+
+    </div><!-- /tabs-container -->
+
+    <!-- ── Tab bar (fixed bottom) ─────────────────────────── -->
+    <nav id="tab-bar" class="tab-bar hidden" role="navigation">
+      <button class="tab tab--active" data-tab="pet">
+        <span class="tab-icon">🐶</span>
+        <span id="tab-lbl-pet" class="tab-label">Питомец</span>
+      </button>
+      <button class="tab" data-tab="settings">
+        <span class="tab-icon">⚙️</span>
+        <span id="tab-lbl-settings" class="tab-label">Настройки</span>
+      </button>
+      <button class="tab" data-tab="rewards">
+        <span class="tab-icon">🎁</span>
+        <span id="tab-lbl-rewards" class="tab-label">Награды</span>
+      </button>
+      <button class="tab" data-tab="coach">
+        <span class="tab-icon">💬</span>
+        <span id="tab-lbl-coach" class="tab-label">Кинолог</span>
+      </button>
+    </nav>
+
+  </div><!-- /app -->
+
+  <script src="/webapp/app.js"></script>
+</body>
+</html>

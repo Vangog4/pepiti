@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+
+# Secrets
+.env
+.env.backup.*
+*.session
+
+# Logs and temp artifacts
+logs/
+artifacts/
+bot/logs/
+bot/artifacts/
+
+# Odoo data (lives in named volumes)
+odoo/filestore/
+odoo/sessions/
+
+# Editor
+.DS_Store
+*.swp
+*.swo
+*.orig
+
+# Claude Code config (contains MCP credentials)
+.claude/
+bot/.claude/
+odoo/.claude/
+
+# Odoo config with DB password — never commit
+odoo/config/odoo.conf
+
+# uv
+odoo/tools/.venv/

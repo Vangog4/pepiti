@@ -1,0 +1,327 @@
+// ============================================================
+// Pepito Design — дизайн-полировка pepitopet.ru
+// ============================================================
+
+// ---------- Переменные бренда ----------
+$color-dark:    #1A0A00;
+$color-cream:   #FDF6EE;
+$color-gold:    #F0A500;
+$color-rust:    #C8411A;
+$color-warm:    #FBF3E8;
+$color-brown:   #5A3E28;
+
+// ---------- Типографика ----------
+#wrapwrap h1, #wrapwrap h2, #wrapwrap h3 {
+    font-family: 'Playfair Display', serif;
+    letter-spacing: -0.02em;
+}
+
+// ---------- Навигация ----------
+#wrapwrap > header {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: background 0.3s ease;
+}
+
+#wrapwrap > header .navbar {
+    min-height: 96px !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+}
+
+// ---------- Логотип в шапке ----------
+.navbar-brand.logo,
+.navbar-brand.logo span {
+    display: flex !important;
+    align-items: center !important;
+}
+
+.navbar-brand.logo img,
+.navbar-brand.logo span img {
+    height: 90px !important;
+    width: auto !important;
+    max-height: 90px !important;
+    filter: drop-shadow(0 0 10px rgba(240, 165, 0, 0.65))
+            drop-shadow(0 0 4px rgba(240, 165, 0, 0.4)) !important;
+    transition: filter 0.3s ease, transform 0.3s ease !important;
+}
+
+.navbar-brand.logo:hover img,
+.navbar-brand.logo:hover span img {
+    filter: drop-shadow(0 0 16px rgba(240, 165, 0, 0.95))
+            drop-shadow(0 0 6px rgba(240, 165, 0, 0.6)) !important;
+    transform: scale(1.05) !important;
+}
+
+// ---------- Кнопки ----------
+#wrapwrap .btn-primary,
+#wrapwrap .btn.btn-primary {
+    background: $color-rust !important;
+    border-color: $color-rust !important;
+    border-radius: 100px !important;
+    padding: 12px 28px !important;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease !important;
+
+    &:hover {
+        background: darken($color-rust, 8%) !important;
+        border-color: darken($color-rust, 8%) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba($color-rust, 0.35) !important;
+    }
+}
+
+#wrapwrap .btn-secondary,
+#wrapwrap .btn.btn-secondary {
+    background: $color-gold !important;
+    border-color: $color-gold !important;
+    color: $color-dark !important;
+    border-radius: 100px !important;
+    padding: 12px 28px !important;
+    font-weight: 700;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+
+    &:hover {
+        background: darken($color-gold, 8%) !important;
+        border-color: darken($color-gold, 8%) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba($color-gold, 0.4) !important;
+    }
+}
+
+// ---------- Секция three_columns (Преимущества) ----------
+.s_three_columns .s_card {
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.35s ease !important;
+
+    &:hover {
+        transform: translateY(-8px) !important;
+        box-shadow: 0 20px 48px rgba($color-dark, 0.18) !important;
+    }
+
+    img {
+        transition: transform 0.5s ease !important;
+    }
+
+    &:hover img {
+        transform: scale(1.06) !important;
+    }
+}
+
+// ---------- Masonry (Лакомства / Кормовые культуры) ----------
+.s_masonry_block .o_record_cover_container {
+    border-radius: 20px !important;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+    &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 16px 40px rgba($color-dark, 0.2);
+    }
+}
+
+// ---------- Карточки товаров ----------
+.oe_website_sale .o_wsale_product_grid_wrapper .o_wsale_product_grid,
+.oe_website_sale .oe_product_cart {
+    border-radius: 16px !important;
+    overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.3s ease !important;
+    border: 1px solid rgba($color-dark, 0.06) !important;
+    background: #fff !important;
+
+    &:hover {
+        transform: translateY(-6px) !important;
+        box-shadow: 0 16px 40px rgba($color-dark, 0.12) !important;
+    }
+}
+
+.oe_website_sale .o_product_image_link {
+    border-radius: 0 !important;
+    overflow: hidden;
+
+    img {
+        transition: transform 0.45s ease !important;
+    }
+
+    &:hover img {
+        transform: scale(1.05) !important;
+    }
+}
+
+// Цены на карточках
+.oe_website_sale .product_price .oe_currency_value {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    color: $color-rust;
+    font-size: 1.1rem;
+}
+
+// Кнопка корзины
+.o_wsale_product_btn_primary {
+    background: $color-rust !important;
+    border-color: $color-rust !important;
+    border-radius: 100px !important;
+    transition: background 0.2s, transform 0.2s !important;
+
+    &:hover {
+        background: darken($color-rust, 10%) !important;
+        transform: translateY(-1px) !important;
+    }
+}
+
+// ---------- Страница магазина ----------
+// Заголовок
+.o_wsale_products_header h1 {
+    font-family: 'Playfair Display', serif !important;
+    color: $color-dark !important;
+    font-weight: 800 !important;
+}
+
+// Теги-фильтры
+.o_wsale_filmstrip_images {
+    gap: 12px !important;
+}
+
+.o_wsale_filmstrip_item {
+    border-radius: 12px !important;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+
+    &:hover, &.active {
+        transform: scale(1.03);
+    }
+}
+
+// Левый сайдбар фильтров
+.o_wsale_offcanvas .accordion-button:not(.collapsed),
+.accordion-button:focus {
+    color: $color-rust !important;
+    box-shadow: none !important;
+}
+
+.form-check-input:checked {
+    background-color: $color-rust !important;
+    border-color: $color-rust !important;
+}
+
+// ---------- Dynamic snippet (Наши лакомства) ----------
+.s_dynamic_snippet_products .s_dynamic_snippet_title h2 {
+    font-family: 'Playfair Display', serif !important;
+    color: $color-dark !important;
+    font-weight: 800 !important;
+    font-size: 2rem !important;
+}
+
+.s_dynamic_snippet_products .s_dynamic_snippet_title a {
+    color: $color-rust !important;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover {
+        color: darken($color-rust, 10%) !important;
+        text-decoration: underline;
+    }
+}
+
+// ---------- CTA box (Натуральный выбор) ----------
+.s_cta_box .o_card_img_wrapper {
+    border-radius: 20px !important;
+    overflow: hidden;
+}
+
+// ---------- Страница товара ----------
+.o_wsale_product_main_col h1 {
+    font-family: 'Playfair Display', serif !important;
+    color: $color-dark !important;
+    font-size: 2rem !important;
+}
+
+.product_price .oe_currency_value {
+    font-size: 1.8rem !important;
+    color: $color-rust !important;
+    font-weight: 800 !important;
+}
+
+// ---------- Подвал ----------
+#footer {
+    h5, h6 {
+        letter-spacing: 0.02em;
+    }
+
+    a {
+        transition: color 0.2s ease, opacity 0.2s ease;
+
+        &:hover {
+            color: $color-gold !important;
+            opacity: 1 !important;
+        }
+    }
+}
+
+// ---------- Поиск ----------
+.o_searchbar_form .search-query {
+    border-radius: 100px !important;
+    padding-left: 20px !important;
+    border: 2px solid rgba($color-dark, 0.1) !important;
+    transition: border-color 0.2s;
+
+    &:focus {
+        border-color: $color-rust !important;
+        box-shadow: 0 0 0 3px rgba($color-rust, 0.1) !important;
+    }
+}
+
+// ---------- Breadcrumbs ----------
+.breadcrumb-item.active {
+    color: $color-brown !important;
+}
+
+.breadcrumb-item a {
+    color: $color-rust !important;
+}
+
+// ---------- Пагинация ----------
+.page-item.active .page-link {
+    background-color: $color-rust !important;
+    border-color: $color-rust !important;
+}
+
+.page-link {
+    color: $color-rust !important;
+
+    &:hover {
+        background-color: rgba($color-rust, 0.1) !important;
+    }
+}
+
+// ---------- Wishlist иконка ----------
+.o_wsale_product_btn .o_add_wishlist {
+    border-radius: 100px !important;
+}
+
+// ---------- Badge / Ribbon ----------
+.product_ribbon {
+    background: $color-rust !important;
+}
+
+// ---------- Анимация появления секций ----------
+@media (prefers-reduced-motion: no-preference) {
+    .s_three_columns .s_card,
+    .oe_product_cart,
+    .s_dynamic_snippet_products .o_wsale_product_grid {
+        animation: fadeUpIn 0.4s ease both;
+    }
+
+    @keyframes fadeUpIn {
+        from {
+            opacity: 0;
+            transform: translateY(16px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}

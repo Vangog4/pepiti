@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Breadcrumb "All products" → "Все товары" -->
+    <template id="all_products_link_name_ru" inherit_id="website_sale.all_products_link_name" name="All Products — RU">
+        <xpath expr="//span" position="replace">
+            <span>Все товары</span>
+        </xpath>
+    </template>
+</odoo>

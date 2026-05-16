@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Заглушка — фикс homepage делается напрямую через arch_db (data-product-category-id=1) -->
+    <!-- Этот файл зарезервирован для будущих QWeb-фиксов главной страницы -->
+</odoo>

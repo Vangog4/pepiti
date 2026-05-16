@@ -1,0 +1,31 @@
+# Odoo filestore and session data (lives in named volumes)
+/filestore/
+/sessions/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Editor artifacts
+.DS_Store
+*.swp
+*.swo
+*.orig
+
+# Judge logs
+artifacts/
+
+# Local config overrides (never commit passwords)
+config/*.conf.local
+
+# uv / pip environments
+.venv/
+tools/.venv/
+
+# Claude Code config (contains MCP credentials)
+.claude/
+
+# Empty marker files
+oom

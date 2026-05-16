@@ -1,0 +1,294 @@
+/* ============================================================
+   Pepito Design — pepitopet.ru
+   Colours: rust=#C8411A gold=#F0A500 dark=#1A0A00 cream=#FDF6EE
+   ============================================================ */
+
+/* ---------- Типографика ---------- */
+#wrapwrap h1, #wrapwrap h2, #wrapwrap h3 {
+    font-family: 'Playfair Display', serif;
+    letter-spacing: -0.02em;
+}
+
+/* ---------- Навигация ---------- */
+#wrapwrap > header {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: background 0.3s ease;
+}
+
+#wrapwrap > header .navbar {
+    min-height: 96px !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+}
+
+/* ---------- Логотип ---------- */
+.navbar-brand.logo,
+.navbar-brand.logo span {
+    display: flex !important;
+    align-items: center !important;
+}
+
+.navbar-brand.logo img,
+.navbar-brand.logo span img {
+    height: 90px !important;
+    width: auto !important;
+    max-height: 90px !important;
+    filter: drop-shadow(0 0 10px rgba(240, 165, 0, 0.65))
+            drop-shadow(0 0 4px rgba(240, 165, 0, 0.4)) !important;
+    transition: filter 0.3s ease, transform 0.3s ease !important;
+}
+
+.navbar-brand.logo:hover img,
+.navbar-brand.logo:hover span img {
+    filter: drop-shadow(0 0 16px rgba(240, 165, 0, 0.95))
+            drop-shadow(0 0 6px rgba(240, 165, 0, 0.6)) !important;
+    transform: scale(1.05) !important;
+}
+
+/* ---------- Кнопки ---------- */
+#wrapwrap .btn-primary,
+#wrapwrap .btn.btn-primary {
+    background: #C8411A !important;
+    border-color: #C8411A !important;
+    border-radius: 100px !important;
+    padding: 12px 28px !important;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease !important;
+}
+
+#wrapwrap .btn-primary:hover,
+#wrapwrap .btn.btn-primary:hover {
+    background: #a83516 !important;
+    border-color: #a83516 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(200, 65, 26, 0.35) !important;
+}
+
+#wrapwrap .btn-secondary,
+#wrapwrap .btn.btn-secondary {
+    background: #F0A500 !important;
+    border-color: #F0A500 !important;
+    color: #1A0A00 !important;
+    border-radius: 100px !important;
+    padding: 12px 28px !important;
+    font-weight: 700;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+#wrapwrap .btn-secondary:hover,
+#wrapwrap .btn.btn-secondary:hover {
+    background: #c98d00 !important;
+    border-color: #c98d00 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(240, 165, 0, 0.4) !important;
+}
+
+/* ---------- Секция three_columns (Преимущества) ---------- */
+.s_three_columns .s_card {
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.35s ease !important;
+}
+
+.s_three_columns .s_card:hover {
+    transform: translateY(-8px) !important;
+    box-shadow: 0 20px 48px rgba(26, 10, 0, 0.18) !important;
+}
+
+.s_three_columns .s_card img {
+    transition: transform 0.5s ease !important;
+}
+
+.s_three_columns .s_card:hover img {
+    transform: scale(1.06) !important;
+}
+
+/* ---------- Masonry ---------- */
+.s_masonry_block .o_record_cover_container {
+    border-radius: 20px !important;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.s_masonry_block .o_record_cover_container:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(26, 10, 0, 0.2);
+}
+
+/* ---------- Карточки товаров ---------- */
+.oe_website_sale .o_wsale_product_grid_wrapper .o_wsale_product_grid,
+.oe_website_sale .oe_product_cart {
+    border-radius: 16px !important;
+    overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.3s ease !important;
+    border: 1px solid rgba(26, 10, 0, 0.06) !important;
+    background: #fff !important;
+}
+
+.oe_website_sale .o_wsale_product_grid_wrapper .o_wsale_product_grid:hover,
+.oe_website_sale .oe_product_cart:hover {
+    transform: translateY(-6px) !important;
+    box-shadow: 0 16px 40px rgba(26, 10, 0, 0.12) !important;
+}
+
+.oe_website_sale .o_product_image_link {
+    border-radius: 0 !important;
+    overflow: hidden;
+}
+
+.oe_website_sale .o_product_image_link img {
+    transition: transform 0.45s ease !important;
+}
+
+.oe_website_sale .o_product_image_link:hover img {
+    transform: scale(1.05) !important;
+}
+
+/* Цены на карточках */
+.oe_website_sale .product_price .oe_currency_value {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    color: #C8411A;
+    font-size: 1.1rem;
+}
+
+/* Кнопка корзины */
+.o_wsale_product_btn_primary {
+    background: #C8411A !important;
+    border-color: #C8411A !important;
+    border-radius: 100px !important;
+    transition: background 0.2s, transform 0.2s !important;
+}
+
+.o_wsale_product_btn_primary:hover {
+    background: #a83516 !important;
+    transform: translateY(-1px) !important;
+}
+
+/* ---------- Страница магазина ---------- */
+.o_wsale_products_header h1 {
+    font-family: 'Playfair Display', serif !important;
+    color: #1A0A00 !important;
+    font-weight: 800 !important;
+}
+
+.o_wsale_filmstrip_item {
+    border-radius: 12px !important;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+}
+
+.o_wsale_filmstrip_item:hover,
+.o_wsale_filmstrip_item.active {
+    transform: scale(1.03);
+}
+
+.o_wsale_offcanvas .accordion-button:not(.collapsed),
+.accordion-button:focus {
+    color: #C8411A !important;
+    box-shadow: none !important;
+}
+
+.form-check-input:checked {
+    background-color: #C8411A !important;
+    border-color: #C8411A !important;
+}
+
+/* ---------- Dynamic snippet ---------- */
+.s_dynamic_snippet_products .s_dynamic_snippet_title h2 {
+    font-family: 'Playfair Display', serif !important;
+    color: #1A0A00 !important;
+    font-weight: 800 !important;
+    font-size: 2rem !important;
+}
+
+.s_dynamic_snippet_products .s_dynamic_snippet_title a {
+    color: #C8411A !important;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.s_dynamic_snippet_products .s_dynamic_snippet_title a:hover {
+    color: #a83516 !important;
+    text-decoration: underline;
+}
+
+/* ---------- CTA box ---------- */
+.s_cta_box .o_card_img_wrapper {
+    border-radius: 20px !important;
+    overflow: hidden;
+}
+
+/* ---------- Страница товара ---------- */
+.o_wsale_product_main_col h1 {
+    font-family: 'Playfair Display', serif !important;
+    color: #1A0A00 !important;
+    font-size: 2rem !important;
+}
+
+.product_price .oe_currency_value {
+    font-size: 1.8rem !important;
+    color: #C8411A !important;
+    font-weight: 800 !important;
+}
+
+/* ---------- Подвал ---------- */
+#footer h5, #footer h6 {
+    letter-spacing: 0.02em;
+}
+
+#footer a {
+    transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+#footer a:hover {
+    color: #F0A500 !important;
+    opacity: 1 !important;
+}
+
+/* ---------- Поиск ---------- */
+.o_searchbar_form .search-query {
+    border-radius: 100px !important;
+    padding-left: 20px !important;
+    border: 2px solid rgba(26, 10, 0, 0.1) !important;
+    transition: border-color 0.2s;
+}
+
+.o_searchbar_form .search-query:focus {
+    border-color: #C8411A !important;
+    box-shadow: 0 0 0 3px rgba(200, 65, 26, 0.1) !important;
+}
+
+/* ---------- Breadcrumbs ---------- */
+.breadcrumb-item.active {
+    color: #5A3E28 !important;
+}
+
+.breadcrumb-item a {
+    color: #C8411A !important;
+}
+
+/* ---------- Пагинация ---------- */
+.page-item.active .page-link {
+    background-color: #C8411A !important;
+    border-color: #C8411A !important;
+}
+
+.page-link {
+    color: #C8411A !important;
+}
+
+.page-link:hover {
+    background-color: rgba(200, 65, 26, 0.1) !important;
+}
+
+/* ---------- Wishlist / Badge ---------- */
+.o_wsale_product_btn .o_add_wishlist {
+    border-radius: 100px !important;
+}
+
+.product_ribbon {
+    background: #C8411A !important;
+}

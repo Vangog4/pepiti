@@ -1,0 +1,59 @@
+name: pepito-bot
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: pepito
+      POSTGRES_PASSWORD: pepito_pass
+      POSTGRES_DB: pepito_db
+    volumes:
+      - pepito_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - pepito_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pepito"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - pepito_redisdata:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - pepito_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  bot:
+    build: .
+    restart: always
+    env_file:
+      - .env
+    networks:
+      - pepito_net
+      - npm_network
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  pepito_pgdata:
+  pepito_redisdata:
+
+networks:
+  pepito_net:
+    driver: bridge
+  npm_network:
+    external: true

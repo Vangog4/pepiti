@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+WORKDIR /app
+
+RUN pip install uv
+
+COPY requirements.txt .
+RUN uv pip install --system -r requirements.txt
+
+COPY . .
+
+RUN printf '#!/bin/sh\necho "Waiting for databases to boot..."\nsleep 5\necho "Running migrations..."\nalembic upgrade head\necho "Starting bot..."\nexec python -m app.main\n' > /app/start.sh && chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]
