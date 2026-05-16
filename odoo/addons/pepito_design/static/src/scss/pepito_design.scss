@@ -110,14 +110,14 @@ $color-brown:   #5A3E28;
 }
 
 // ---------- Masonry (Лакомства / Кормовые культуры) ----------
-.s_masonry_block .o_record_cover_container {
-    border-radius: 20px !important;
-    overflow: hidden;
+.s_masonry_block .o_grid_item {
+    position: relative !important;
+    cursor: pointer;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 
     &:hover {
         transform: translateY(-4px);
-        box-shadow: 0 16px 40px rgba($color-dark, 0.2);
+        box-shadow: 0 16px 40px rgba($color-dark, 0.25) !important;
     }
 }
 
@@ -225,6 +225,33 @@ $color-brown:   #5A3E28;
     }
 }
 
+// ---------- Баннер — плавный переход шапки ----------
+.o_website_main_cover,
+.s_cover {
+    position: relative;
+
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 200px;
+        background: linear-gradient(to bottom, rgba(26,10,0,0.6) 0%, transparent 100%);
+        z-index: 1;
+        pointer-events: none;
+    }
+
+    .o_we_bg_filter {
+        z-index: 0;
+    }
+
+    .container, .container-fluid {
+        position: relative;
+        z-index: 2;
+    }
+}
+
 // ---------- CTA box (Натуральный выбор) ----------
 .s_cta_box .o_card_img_wrapper {
     border-radius: 20px !important;
@@ -299,6 +326,14 @@ $color-brown:   #5A3E28;
 // ---------- Wishlist иконка ----------
 .o_wsale_product_btn .o_add_wishlist {
     border-radius: 100px !important;
+}
+
+// ---------- Скрыть Odoo-бейдж в подвале ----------
+.o_brand_promotion,
+.o_footer_copyright_name,
+a[href*="odoo.com"],
+a[href*="ecommerce"] {
+    display: none !important;
 }
 
 // ---------- Badge / Ribbon ----------
