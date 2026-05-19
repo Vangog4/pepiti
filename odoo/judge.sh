@@ -4,6 +4,7 @@
 # Exit 0 → all checks passed. Exit != 0 → something broke.
 
 set -euo pipefail
+cd "$(dirname "$0")"
 
 ARTIFACTS_DIR="${1:-artifacts}"
 mkdir -p "$ARTIFACTS_DIR"
@@ -38,7 +39,15 @@ if [[ $PY_ERRORS -eq 0 ]]; then
 fi
 
 # ──────────────────────────────────────────────
-sep "2. __manifest__.py presence in each addon"
+sep "2. Ruff lint — addons/**/*.py"
+if command -v uvx &>/dev/null && find addons -name "*.py" -quit 2>/dev/null; then
+    uvx ruff check addons/ --select E,F,W,I --output-format concise 2>/dev/null && ok "ruff lint passed" || fail "ruff found issues"
+else
+    echo "  [SKIP] ruff/uvx not available or no Python files"
+fi
+
+# ──────────────────────────────────────────────
+sep "3. __manifest__.py in each addon"
 MANIFEST_ERRORS=0
 for addon_dir in addons/*/; do
     [[ -d "$addon_dir" ]] || continue

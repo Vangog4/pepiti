@@ -62,6 +62,20 @@ done < <(find app -name "*.py" -print0)
 check "Python syntax (app/)" "$SYNTAX_ERRORS" "$SYNTAX_ERRORS error(s)"
 
 # ------------------------------------------------------------------
+# 1b. Ruff lint + format check
+# ------------------------------------------------------------------
+log ""
+log "=== 1b. Ruff lint ==="
+if command -v uvx &>/dev/null; then
+    uvx ruff check app/ --select E,F,W,I,N,UP,B --output-format concise >>"$LOG_FILE" 2>&1
+    check "ruff lint" $? ""
+    uvx ruff format app/ --check >>"$LOG_FILE" 2>&1
+    check "ruff format" $? ""
+else
+    skip "uvx not found — skipping ruff"
+fi
+
+# ------------------------------------------------------------------
 # 2. Import smoke-check — requires installed deps (aiogram, pydantic-settings…)
 #    Skipped gracefully if deps are missing (e.g. host run outside container)
 # ------------------------------------------------------------------
