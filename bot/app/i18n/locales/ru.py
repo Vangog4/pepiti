@@ -22,15 +22,12 @@ STRINGS: dict[str, str] = {
     "menu.main.streak.days.one": "день",
     "menu.main.streak.days.few": "дня",
     "menu.main.streak.days.many": "дней",
-
     # ── Common buttons ─────────────────────────────────────────────────────────
     "common.back_menu.btn": "🔙 В главное меню",
     "common.back.btn": "🔙 Назад",
     "common.menu.btn": "🔙 Меню",
-
     # ── Errors / Guards ────────────────────────────────────────────────────────
     "error.no_pet": "Сначала пройди регистрацию /start",
-
     # ── Settings ───────────────────────────────────────────────────────────────
     "settings.main.title": "⚙️ <b>Настройки</b>",
     "settings.main.reminder_on": "⏰ Напоминания: <b>{time} ({tz})</b>",
@@ -42,14 +39,17 @@ STRINGS: dict[str, str] = {
     "settings.language.btn": "🌐 Язык",
     "settings.btn": "⚙️ Настройки",
     "settings.reminder.btn": "⏰ Напоминания",
-
     # ── Onboarding (Stage 9: conversational AI) ────────────────────────────────
     "onboarding.start.returning": "С возвращением, {name}! 🐾\nЧто будем делать сегодня?",
     "onboarding.ai.welcome": (
-        "Привет, <b>{name}</b>! Я — твой AI-кинолог Pepito. 🐶\n\n"
-        "Расскажи о своей собаке: как зовут, какая порода, сколько лет "
-        "и с какими трудностями вы сталкиваетесь?\n\n"
-        "<i>Можно написать текстом или отправить голосовое сообщение.</i>\n\n"
+        "🐾 Привет, <b>{name}</b>!\n"
+        "──────────\n"
+        "Я — твой AI-кинолог <b>Pepito</b>. 🐶\n\n"
+        "Расскажи о своей собаке:\n"
+        "• как зовут\n"
+        "• порода и возраст\n"
+        "• с какими трудностями сталкиваетесь\n\n"
+        "<i>Текстом или голосовым сообщением.</i>\n\n"
         "<b>Например:</b> «Бигль Чарли, 2 года, тянет поводок и лает на других собак»"
     ),
     "onboarding.ai.thinking": "⏳ <i>Анализирую...</i>",
@@ -63,16 +63,16 @@ STRINGS: dict[str, str] = {
     "onboarding.ai.clarify.age_category": "Сколько ему лет? (щенок, молодой или взрослый?)",
     # completion — interpolation: {name}, {pet}
     "onboarding.done.welcome": (
-        "🎉 <b>Профиль создан!</b>\n\n"
-        "Добро пожаловать, {name}!\n"
-        "Я готов помочь тебе с тренировками <b>{pet}</b>."
+        "🎉 <b>Профиль создан!</b>\n"
+        "──────────\n"
+        "Добро пожаловать, {name}!\n\n"
+        "🐾 Я готов помочь тебе с тренировками <b>{pet}</b>."
     ),
     "onboarding.done.referral_bonus": "\n\n🎁 <b>Бонус за приглашение:</b> +{days} дня Premium активированы!",
     "onboarding.done.milestone": "\n🏆 <b>Реферальный milestone:</b> {label} — {reward}!",
     "onboarding.done.plan_loading": "🐾 <i>Составляю первый план тренировки для {pet}...</i>",
     "onboarding.done.first_plan": "🏋️ <b>Вот твой первый план!</b>\n\n{plan}",
     "onboarding.done.fallback": "Выбери, с чего начнём 👇",
-
     # ── Training ───────────────────────────────────────────────────────────────
     "training.loading": "🐾 <i>Составляю план для {name}...</i>",
     "training.refresh.confirm": "🔄 <b>Сгенерировать новый план?</b>\n\nТекущий прогресс будет сброшен.",
@@ -82,12 +82,12 @@ STRINGS: dict[str, str] = {
     "training.refresh.toast": "Генерирую новый план…",
     "training.week.loading": "📅 <i>Составляю недельный план для {name}...</i>",
     "training.week.refresh.confirm": (
-        "🔄 <b>Сгенерировать новый недельный план?</b>\n\n"
-        "Текущий прогресс недели будет сброшен."
+        "🔄 <b>Сгенерировать новый недельный план?</b>\n\nТекущий прогресс недели будет сброшен."
     ),
     "training.week.refresh.loading": "🔄 <i>Генерирую новый недельный план для {name}...</i>",
     "training.week.empty": (
-        "📅 <b>Недельный план</b>\n\n"
+        "📅 <b>Недельный план</b>\n"
+        "──────────\n"
         "🌱 <b>Пока нет задач</b>\n\n"
         "Начни с ежедневного плана — Pepito составит недельный, "
         "когда накопится немного прогресса!"
@@ -105,12 +105,16 @@ STRINGS: dict[str, str] = {
     "training.share.text": "Мы с {name} тренируемся {n} {days} подряд с Pepito! 🐾",
     "training.share.btn": "📤 Поделиться",
     "training.done": (
-        "\n\n🎉 <b>Тренировка завершена! Отличная работа!</b>\n"
-        "{emoji} Тренировок всего: {n}"
+        "\n\n──────────\n"
+        "🎉 <b>Тренировка завершена!</b>\n"
+        "Отличная работа!\n\n"
+        "{emoji} Тренировок всего: <b>{n}</b>"
     ),
     "training.week_done": (
-        "\n\n🎉 <b>{day} выполнен! Отличная работа!</b>\n"
-        "{emoji} Тренировок всего: {n}"
+        "\n\n──────────\n"
+        "🎉 <b>{day} выполнен!</b>\n"
+        "Отличная работа!\n\n"
+        "{emoji} Тренировок всего: <b>{n}</b>"
     ),
     "training.stats.empty": (
         "🌱 <b>Ты только начинаешь!</b>\n\n"
@@ -139,21 +143,24 @@ STRINGS: dict[str, str] = {
     "coach.display.voice": "[🎤 Голосовое]",
     "coach.display.video": "[🎥 Видео]",
     "defaults.pet_name": "Питомец",
-
     # ── AI / Coach ─────────────────────────────────────────────────────────────
     "ai.fallback": (
-        "🧠 <b>Кинолог сейчас обдумывает слишком много запросов</b>\n\n"
+        "🧠 <b>Кинолог сейчас занят</b>\n"
+        "──────────\n"
+        "Слишком много запросов одновременно.\n\n"
         "Попробуй через минуту — обычно это проходит быстро.\n"
-        "<i>Если проблема повторяется, введи /menu и попробуй снова.</i>"
+        "<i>Если проблема повторяется — введи /menu и попробуй снова.</i>"
     ),
     "ai.rate_limit": (
-        "💬 <b>Дневной лимит исчерпан</b>\n\n"
+        "💬 <b>Дневной лимит исчерпан</b>\n"
+        "──────────\n"
         "Free-план: <b>5 AI-запросов в день</b>\n"
-        "Лимит обновится в полночь UTC.\n\n"
+        "Лимит обновится в полночь по UTC.\n\n"
         "⭐ <b>Premium — без ограничений:</b>\n"
         "💬 Безлимитные вопросы кинологу\n"
         "🧠 Глубокий анализ прогресса\n"
-        "🎁 Персональные рекомендации"
+        "🎁 Персональные рекомендации\n"
+        "──────────"
     ),
     "ai.rate_limit.btn": "⭐ Попробовать Premium",
     "ai.analyzing.premium": "🧠 <i>Провожу глубокий анализ...</i>",
@@ -195,23 +202,20 @@ STRINGS: dict[str, str] = {
     "coach.role.owner": "Хозяин",
     "coach.role.trainer": "Кинолог",
     "coach.summary.header": "Краткое резюме предыдущей беседы:",
-
     # ── Voice-action (hands-free task reporting) ───────────────────────────────
     "voice_action.thinking": "🐾 <i>Анализирую...</i>",
     "voice_action.marked": "✅ Я отметил задачу <b>{task}</b> как выполненную!\n\n",
     "voice_action.all_done": "🎉 Все задачи дня выполнены! Отличная тренировка!",
-
     # ── Stats ──────────────────────────────────────────────────────────────────
-    "stats.header": "📊 <b>Статистика {name}</b>\n\n",
+    "stats.header": "📊 <b>Статистика {name}</b>\n──────────\n",
     "stats.days_with_us": "🗓 Дней с Pepito: <b>{n}</b>\n",
-    "stats.completed": "{emoji} Выполнено тренировок: <b>{n}</b>\n\n",
-    "stats.level": "🏆 Уровень послушания: <b>{level}</b>\n\n",
+    "stats.completed": "{emoji} Тренировок выполнено: <b>{n}</b>\n",
+    "stats.level": "🏆 Уровень послушания: <b>{level}</b>\n\n──────────\n",
     "stats.motivate": "<i>Каждая тренировка делает {name} лучше!</i> 🚀",
     "stats.analysis.premium.btn": "🧠 Глубокий анализ AI ⭐",
     "stats.analysis.free.btn": "🧠 Анализ прогресса AI",
-
     # ── Profile ────────────────────────────────────────────────────────────────
-    "profile.header": "🐾 <b>{name}</b>\n\n",
+    "profile.header": "🐾 <b>{name}</b>\n──────────\n",
     "profile.breed": "🐕 Порода: {val}\n",
     "profile.sex": "⚥ Пол: {val}\n",
     "profile.age": "🎂 Возраст: {val}\n",
@@ -220,14 +224,13 @@ STRINGS: dict[str, str] = {
     "profile.level": "🎓 Уровень: {val}/5\n",
     "profile.goal": "🎯 Цель: {val}\n",
     "profile.issues": "📋 Проблемы: {val}\n",
-    "profile.schedule": "🗓 Расписание: {val}\n\n",
+    "profile.schedule": "🗓 Расписание: {val}\n\n──────────\n",
     "profile.training_count": "🔥 Тренировок выполнено: <b>{n}</b>",
     "profile.weight.unit": "кг",
     "profile.weight.unknown": "не указан",
     "profile.issues.none": "нет",
     "profile.schedule.unknown": "не указано",
     "profile.edit.btn": "✏️ Изменить профиль",
-
     # ── Shop ───────────────────────────────────────────────────────────────────
     "shop.title": "🛒 <b>Магазин PepitoPet</b>",
     "shop.body": (
@@ -239,7 +242,6 @@ STRINGS: dict[str, str] = {
     "shop.cat.longplay.btn": "🦴 Долгоиграющие",
     "shop.cat.by_size.btn": "🐶 Для щенков и по размеру",
     "shop.cat.all.btn": "🛒 Весь магазин",
-
     # ── Invite / Referral ──────────────────────────────────────────────────────
     "invite.title": "🐾 <b>Позови друга — бонус обоим!</b>",
     "invite.link_label": "🔗 Твоя ссылка:",
@@ -257,7 +259,6 @@ STRINGS: dict[str, str] = {
     "invite.how.1": "1. Поделись ссылкой",
     "invite.how.2": "2. Друг запускает бота и заполняет профиль",
     "invite.how.3": "3. Вы оба получаете +{days} дней Premium",
-
     # ── Referral push-notifications ────────────────────────────────────────────
     "referral.notify.base": (
         "🎉 По твоей ссылке пришёл новый друг!\n"
@@ -269,17 +270,17 @@ STRINGS: dict[str, str] = {
     ),
     "referral.notify.next_hint": "🎯 Следующая цель: {next_label} → {next_reward}",
     "referral.notify.all_done": "👑 Все награды получены!",
-    "referral.milestone.label.3":  "3 друга",
-    "referral.milestone.label.5":  "5 друзей",
+    "referral.milestone.label.3": "3 друга",
+    "referral.milestone.label.5": "5 друзей",
     "referral.milestone.label.10": "10 друзей",
     "referral.milestone.label.25": "25 друзей",
     "referral.reward.days": "+{days} дней",
-
     # ── Premium / Subscription ─────────────────────────────────────────────────
     "premium.active.title": "⭐ <b>Premium активен</b>",
     "premium.active.expires": "Действует до: <b>{date}</b>",
     "premium.active.features": (
-        "\n\nДоступно:\n"
+        "\n──────────\n"
+        "Доступно:\n"
         "💬 Безлимитные вопросы кинологу\n"
         "🧠 Глубокий AI-анализ прогресса\n"
         "🎁 Персональные рекомендации лакомств"
@@ -296,7 +297,8 @@ STRINGS: dict[str, str] = {
     "premium.invoice.description": "AI-кинолог без ограничений, детальные отчёты и расширенный анализ поведения питомца.",
     "premium.invoice.label": "Premium 1 месяц",
     "premium.activated": (
-        "🎉 <b>Premium активирован!</b>\n\n"
+        "🎉 <b>Premium активирован!</b>\n"
+        "──────────\n"
         "Теперь доступно:\n"
         "💬 Вопросы кинологу без ограничений\n"
         "🧠 Глубокий анализ прогресса питомца\n"
@@ -307,7 +309,6 @@ STRINGS: dict[str, str] = {
         "✔ Возврат средств обработан. Подписка Premium деактивирована.\n"
         "Если это ошибка — обратись в поддержку."
     ),
-
     # ── Reminders ─────────────────────────────────────────────────────────────
     "reminder.title": "⏰ <b>Напоминания</b>",
     "reminder.status.off": "🔕 <b>Отключены</b>",
@@ -322,8 +323,7 @@ STRINGS: dict[str, str] = {
         "<i>Часовой пояс можно изменить в ✏️ Редактировать профиль → 🌍 Часовой пояс.</i>"
     ),
     "reminder.disabled": (
-        "🔕 <b>Отключены</b>\n"
-        "Ты больше не будешь получать ежедневные напоминания."
+        "🔕 <b>Отключены</b>\nТы больше не будешь получать ежедневные напоминания."
     ),
     "reminder.saved": "✅ <b>Готово!</b> Напоминание каждый день в <b>{time} ({tz})</b>.",
     "reminder.error.format": (
@@ -350,7 +350,6 @@ STRINGS: dict[str, str] = {
         "Тренировочных дней: <b>{days}</b>\n"
         "Для детальной аналитики оформи Premium — /menu."
     ),
-
     # ── Help / Support ─────────────────────────────────────────────────────────
     "help.guide.title": "❓ <b>Инструкция Pepito</b>\n\n",
     "help.guide.plan.header": "🧠 <b>Как работает план тренировок</b>\n",
@@ -378,7 +377,6 @@ STRINGS: dict[str, str] = {
     "help.support.btn": "💬 Написать в поддержку",
     "help.btn": "❓ Помощь",
     "help.back_settings.btn": "🔙 К настройкам",
-
     # ── Edit Profile ───────────────────────────────────────────────────────────
     "edit_profile.title": "✏️ <b>Редактирование профиля</b>\n\nЧто хочешь изменить?",
     "edit_profile.field.name.prompt": "Введи новое имя питомца прямо в чат:",

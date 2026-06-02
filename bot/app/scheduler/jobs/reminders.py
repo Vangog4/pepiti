@@ -1,11 +1,12 @@
 import logging
-from datetime import datetime, timezone
-from sqlalchemy import select, or_, and_
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from aiogram import Bot
+from datetime import UTC, datetime
 
+from aiogram import Bot
+from sqlalchemy import and_, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from app.i18n import normalize_locale, t
 from app.infrastructure.db.models.user import UserModel
-from app.i18n import t, normalize_locale
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ DEFAULT_REMINDER_TIME = "10:00"  # local time used when reminder_time is NULL
 
 
 async def send_daily_reminders(session_factory: async_sessionmaker, bot: Bot) -> None:
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     current_utc = now_utc.strftime("%H:%M")
 
     async with session_factory() as session:

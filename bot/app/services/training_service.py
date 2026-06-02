@@ -1,10 +1,10 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
+from app.i18n import t
 from app.infrastructure.db.models.pet import PetModel
 from app.infrastructure.db.models.training import TrainingPlanModel, TrainingTaskModel
 from app.infrastructure.db.repositories.training_repo import TrainingPlanRepository
 from app.services.ai_service import AiService
-from app.i18n import t
 
 
 class TrainingService:
@@ -32,7 +32,9 @@ class TrainingService:
         plan_data["goal"] = plan_data.get("goal") or pet.goal
         return await self.plan_repo.create_with_tasks(user_id, pet.id, plan_data)
 
-    async def get_or_create_week(self, user_id: int, pet: PetModel, lang: str = "ru") -> TrainingPlanModel:
+    async def get_or_create_week(
+        self, user_id: int, pet: PetModel, lang: str = "ru"
+    ) -> TrainingPlanModel:
         plan = await self.plan_repo.get_active_week_plan(pet.id)
         if plan:
             return plan
@@ -41,9 +43,7 @@ class TrainingService:
         plan_data["goal"] = plan_data.get("goal") or pet.goal
         return await self.plan_repo.create_week_plan(user_id, pet.id, plan_data, week_number)
 
-    async def toggle_task(
-        self, task_id: int, pet: PetModel
-    ) -> tuple[TrainingTaskModel, bool]:
+    async def toggle_task(self, task_id: int, pet: PetModel) -> tuple[TrainingTaskModel, bool]:
         """Toggle task completion. Returns (task, plan_fully_done)."""
         task = await self.plan_repo.get_task(task_id)
         if not task:
@@ -51,7 +51,7 @@ class TrainingService:
 
         task.is_completed = not task.is_completed
         if task.is_completed:
-            task.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            task.completed_at = datetime.now(UTC).replace(tzinfo=None)
         else:
             task.completed_at = None
 
@@ -88,8 +88,11 @@ class TrainingService:
 
         hint_lower = hint.lower()
         matched = next(
-            (t for t in incomplete
-             if hint_lower in t.title.lower() or t.title.lower() in hint_lower),
+            (
+                t
+                for t in incomplete
+                if hint_lower in t.title.lower() or t.title.lower() in hint_lower
+            ),
             incomplete[0],
         )
         return await self.toggle_task(matched.id, pet)

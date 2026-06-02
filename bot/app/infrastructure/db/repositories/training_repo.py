@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -49,14 +49,16 @@ class TrainingPlanRepository:
         await self.session.flush()
 
         for idx, t in enumerate(plan_data.get("tasks", [])):
-            self.session.add(TrainingTaskModel(
-                plan_id=plan.id,
-                day_of_week=idx,
-                title=t.get("title", f"Задача {idx + 1}"),
-                description=t.get("description"),
-                duration_minutes=t.get("duration_minutes"),
-                difficulty=t.get("difficulty"),
-            ))
+            self.session.add(
+                TrainingTaskModel(
+                    plan_id=plan.id,
+                    day_of_week=idx,
+                    title=t.get("title", f"Задача {idx + 1}"),
+                    description=t.get("description"),
+                    duration_minutes=t.get("duration_minutes"),
+                    difficulty=t.get("difficulty"),
+                )
+            )
 
         await self.session.commit()
 
@@ -99,14 +101,16 @@ class TrainingPlanRepository:
         for day_data in plan_data.get("days", []):
             day = day_data.get("day", 1)
             for t in day_data.get("tasks", []):
-                self.session.add(TrainingTaskModel(
-                    plan_id=plan.id,
-                    day_of_week=day,
-                    title=t.get("title", "Задача"),
-                    description=t.get("description"),
-                    duration_minutes=t.get("duration_minutes"),
-                    difficulty=t.get("difficulty"),
-                ))
+                self.session.add(
+                    TrainingTaskModel(
+                        plan_id=plan.id,
+                        day_of_week=day,
+                        title=t.get("title", "Задача"),
+                        description=t.get("description"),
+                        duration_minutes=t.get("duration_minutes"),
+                        difficulty=t.get("difficulty"),
+                    )
+                )
 
         await self.session.commit()
         result = await self.session.execute(

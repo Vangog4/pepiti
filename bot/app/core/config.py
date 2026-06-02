@@ -1,13 +1,13 @@
-from typing import List
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     BOT_TOKEN: str
     GEMINI_API_KEY: str
     DATABASE_URL: str = "postgresql+asyncpg://pepito:pepito_pass@pepito-bot_db_1:5432/pepito_db"
     REDIS_URL: str = "redis://redis:6379/0"
-    ADMIN_TELEGRAM_IDS: List[int] = []
+    ADMIN_TELEGRAM_IDS: list[int] = []
     APP_ENV: str = "development"
     LOG_LEVEL: str = "INFO"
     SUPPORT_URL: str = "https://t.me/pepitopet_support"
@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     # Set in .env: BOT_USERNAME=pepito_bot
     BOT_USERNAME: str = ""
 
+    SENTRY_DSN: str = ""
+
     @field_validator("ADMIN_TELEGRAM_IDS", mode="before")
     @classmethod
     def parse_admin_ids(cls, v):
@@ -35,5 +37,6 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
 
 settings = Settings()

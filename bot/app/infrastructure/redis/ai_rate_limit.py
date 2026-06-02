@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import redis.asyncio as aioredis
 
@@ -10,11 +10,11 @@ class AiRateLimiter:
         self._client: aioredis.Redis = aioredis.from_url(redis_url, decode_responses=True)
 
     def _key(self, telegram_id: int) -> str:
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
         return f"ai_rl:{telegram_id}:{today}"
 
     def _ttl_to_midnight(self) -> int:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         tomorrow = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
         return max(1, int((tomorrow - now).total_seconds()))
 

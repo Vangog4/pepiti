@@ -1,6 +1,8 @@
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import relationship
+
 from app.infrastructure.db.models.base import Base
+
 
 class UserModel(Base):
     __tablename__ = "users"
@@ -19,10 +21,17 @@ class UserModel(Base):
     training_days = Column(Integer, default=0)
     referrer_telegram_id = Column(BigInteger, nullable=True)
     referral_bonus_given = Column(Boolean, nullable=False, default=False)
-    reminder_time = Column(String(5), nullable=True)  # "HH:MM" local time; None → uses DEFAULT_REMINDER_TIME
+    reminder_time = Column(
+        String(5), nullable=True
+    )  # "HH:MM" local time; None → uses DEFAULT_REMINDER_TIME
     active_coach_thread_id = Column(
         Integer,
-        ForeignKey("coach_threads.id", use_alter=True, name="fk_users_active_coach_thread", ondelete="SET NULL"),
+        ForeignKey(
+            "coach_threads.id",
+            use_alter=True,
+            name="fk_users_active_coach_thread",
+            ondelete="SET NULL",
+        ),
         nullable=True,
     )
     created_at = Column(DateTime, server_default=func.now())

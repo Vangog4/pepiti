@@ -1,155 +1,93 @@
-# CLAUDE.md — pepito_odoo
+# CLAUDE.md — pepito/odoo (Интернет-магазин pepitopet.ru)
 
-Интернет-магазин pepitopet.ru — натуральные говяжьи лакомства для собак, 34 товара.
+## Sandbox Rules (ОБЯЗАТЕЛЬНО)
+- Runtime: **podman** и **podman-compose** ТОЛЬКО
+- **НИКОГДА:** `apt install`, `pip install` (глобально), `docker`
+- Полный путь: `/root/pepito/odoo/`
 
 ## Stack
 
-- **Odoo 19** — `odoo_pepito_app`, хостовый порт `127.0.0.1:8071:8069`
-- **PostgreSQL 17** — `odoo_pepito_db`
-- **Browserless/Chromium** — `odoo_pepito_browserless`, хостовый порт `127.0.0.1:3002:3000`
-- Сеть: `pepito_net` (internal bridge) + `npm_network` (external, reverse proxy)
-- Compose-файл: `podman-compose.yml`
-- Кастомные модули: `./addons/`
-- Публичный домен: `pepitopet.ru`
-
----
-
-## Workflow изменений (judge-цикл)
+| Компонент | Детали |
+|---|---|
+| Odoo | 19 Community |
+| PostgreSQL | 17 |
+| Runtime | Podman |
+| Публичный URL | `https://pepitopet.ru` |
+| Каталог | 34 товара (натуральные говяжьи лакомства) |
 
 ```
-propose → patch → ./judge.sh → keep (commit) / discard (git checkout)
+pepito/odoo/
+├── addons/        — кастомные модули (Agent-owned)
+├── artifacts/     — артефакты CI/QA
+├── config/        — odoo.conf (Human-owned)
+├── judge.sh       — скрипт валидации
+├── podman-compose.yml (Human-owned)
+└── tools/         — MCP visual-qa server
 ```
 
+## Mode Declarations
+- `[REVIEW MODE]` / `[DESIGN MODE]` / `[BUILD MODE]` / `[PATCH MODE]`
+
+## Управление стеком
 ```bash
-./judge.sh                   # лог → artifacts/judge-<timestamp>.log
-./judge.sh my-artifacts-dir  # кастомный каталог логов
-```
+# Запуск
+cd /root/pepito/odoo && podman-compose up -d
 
-Judge проверяет:
-1. Синтаксис Python во всех `addons/**/*.py`
-2. Наличие `__manifest__.py` в каждом аддоне
-3. XML валидность (`xmllint`) во всех `addons/**/*.xml`
-4. Odoo health-endpoint (`/web/health` через хостовый порт)
-5. Наличие критических файлов проекта
+# Рестарт Odoo (без БД)
+podman-compose restart web
 
-**Exit 0** → изменение принято, можно коммитить.
-**Exit != 0** → откатить: `git checkout -- <changed files>`, причину записать в `artifacts/`.
+# Логи
+podman logs -f odoo_pepito_app
 
----
-
-## Деплой
-
-### Рекомендуемый сценарий
-
-```bash
-cd /root/pepito/odoo
-
-# Обновить модуль после правки (без рестарта Odoo):
+# Апгрейд модуля
 podman exec odoo_pepito_app odoo -u <module_name> --stop-after-init
-
-# Полный рестарт (редко нужен):
-podman-compose down
-podman-compose up -d
-podman logs -f odoo_pepito_app
 ```
 
-### Запуск с нуля (после перезагрузки сервера)
-
+## Pre-Session Checklist
 ```bash
-cd /root/pepito/odoo
-podman-compose up -d
-podman logs -f odoo_pepito_app
+podman ps --filter name=odoo_pepito      # все контейнеры running?
+podman logs odoo_pepito_app --tail=20    # нет ERROR?
+df -h /                                  # диск < 90%?
 ```
 
-### Browserless (для Visual QA)
-
+## Rollback Protocol
 ```bash
-# Запустить отдельно если упал:
-podman-compose up -d browserless_pepito
-```
+# 1. Перед изменением модуля:
+git -C /root/pepito/odoo stash
 
----
-
-## Visual QA Workflow
-
-**Триггеры:** слова "кривой", "поехала верстка", "визуальный баг", "посмотри сайт",
-"не так выглядит", "расположение", "отступы", "блок", "секция".
-
-### Шаги
-
-1. **Проверь browserless:** вызови `browserless_health()` (MCP-сервер `visual-qa-pepito`).
-   - Если `UNREACHABLE` → попроси пользователя выполнить:
-     `podman-compose -f /root/pepito/odoo/podman-compose.yml up -d browserless_pepito`
-
-2. **Сделай скриншот:** вызови `screenshot(url="http://web_pepito:8069/")`.
-   - `url` передаётся внутри сети podman → browserless разрешает `web_pepito` по имени.
-   - Для конкретной страницы: `screenshot(url="http://web_pepito:8069/shop")`.
-   - Результат — base64 PNG; передай его в сообщение как изображение для анализа.
-
-3. **Диагностика блоков:** при подозрении на поехавшие отступы/высоты вызови:
-   `dom_geometry(url="http://web_pepito:8069/", selector="header, .o_home_menu, section, footer")`
-
-4. **Исправляй** в `./addons/<module>/static/src/scss/` или в шаблонах QWeb.
-   После правки — повтори скриншот для верификации.
-
-### URL-справочник
-
-| Откуда         | URL Odoo                       | URL Browserless          |
-|----------------|--------------------------------|--------------------------|
-| Внутри сети    | `http://web_pepito:8069`       | `http://browserless_pepito:3000` |
-| С хоста        | `http://127.0.0.1:8071`        | `http://127.0.0.1:3002`  |
-| Публичный      | `https://pepitopet.ru`         | —                        |
-
-### MCP-инструменты (сервер `visual-qa-pepito`)
-
-| Инструмент          | Назначение                                    |
-|---------------------|-----------------------------------------------|
-| `screenshot`        | Полностраничный PNG, возвращает base64        |
-| `dom_geometry`      | BBox всех элементов по CSS-селектору          |
-| `browserless_health`| Проверка доступности контейнера               |
-
----
-
-## Разработка модулей
-
-```bash
-# Перезагрузка модуля без рестарта Odoo:
+# 2. Если Odoo не стартует:
+git -C /root/pepito/odoo stash pop
 podman exec odoo_pepito_app odoo -u <module> --stop-after-init
 
-# Логи Odoo:
-podman logs -f odoo_pepito_app
-
-# Права на addons (если нужны):
-chown -R root:root /root/pepito/odoo/addons/
+# 3. Проверка после изменений:
+podman logs odoo_pepito_app --tail=30 | grep -E "^[0-9].*ERROR"
 ```
 
----
-
-## Зоны ответственности
-
-**Agent-owned** (агент предлагает и применяет):
-- `addons/` — кастомные модули (SCSS, QWeb, Python контроллеры)
-- `judge.sh`, `CLAUDE.md`
-
-**Human-owned** (не трогать без явного разрешения):
-- `config/odoo.conf` — настройки сервера и БД
-- `podman-compose.yml` — только по согласованию
-
----
-
-## Установленные модули (prod)
-
-account, base_setup, bus, delivery, ecommerce, mail, mrp, payment, payment_custom,
-portal, product, sale, sale_management, website, auth_signup, google_recaptcha,
-stock, utm, web.
-
----
-
-## Rollout-сценарий
-
+## Валидация (judge.sh)
+```bash
+cd /root/pepito/odoo && ./judge.sh
+# exit 0 → принять изменения
+# exit != 0 → git stash pop, разобрать ошибку
 ```
-1. Изменить только agent-owned файлы
-2. ./judge.sh                      # должен дать exit 0
-3. exit 0 → git commit → готово
-4. exit != 0 → git checkout -- .   → artifacts/FAILED-<date>.md
+
+## Интеграция с Telegram-ботом
+Бот ссылается на магазин через UTM в `../bot/app/core/shop.py`:
+```
+utm_source=pepito_bot&utm_medium=telegram&utm_campaign=<context>
+```
+Страницы: `/`, `/shop`, `/oferta`, `/contactus`, `/privacy`
+
+## Guardrails
+- Human-owned: `config/odoo.conf`, `.env`, `podman-compose.yml`
+- Agent-owned: `addons/`, `static/`, QWeb-шаблоны
+- **НИКОГДА** не делать SQL UPDATE/DELETE напрямую (только через ORM)
+- **НИКОГДА** не удалять volume `pepito_odoo_odoo_pepito_db_data`
+
+## SESSION_MEMORY
+```
+<STATE_MEMORY>
+✅ Сделано: [список]
+🔄 Открыто: [задачи]
+➡️ Следующий шаг: [конкретное действие]
+</STATE_MEMORY>
 ```

@@ -1,5 +1,6 @@
-from app.infrastructure.db.repositories.pet_repo import PetRepository
 from app.infrastructure.db.models.pet import PetModel
+from app.infrastructure.db.repositories.pet_repo import PetRepository
+
 
 class PetService:
     def __init__(self, repo: PetRepository):

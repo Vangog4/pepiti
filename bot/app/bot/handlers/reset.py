@@ -5,13 +5,13 @@ from aiogram.types import ReplyKeyboardRemove
 from dependency_injector.wiring import Provide, inject
 from sqlalchemy import delete, select
 
+from app.bot.states.onboarding import OnboardingStates
 from app.core.container import AppContainer
-from app.services.user_service import UserService
+from app.i18n import normalize_locale, t
+from app.infrastructure.db.models.ai_conversation import AiConversationModel
 from app.infrastructure.db.models.pet import PetModel
 from app.infrastructure.db.models.training import TrainingPlanModel, TrainingTaskModel
-from app.infrastructure.db.models.ai_conversation import AiConversationModel
-from app.bot.states.onboarding import OnboardingStates
-from app.i18n import t, normalize_locale
+from app.services.user_service import UserService
 
 router = Router(name="reset_router")
 
@@ -29,9 +29,7 @@ async def reset_profile(
     session = u_svc.repo.session
 
     # Собираем id питомцев
-    pet_ids_result = await session.execute(
-        select(PetModel.id).where(PetModel.user_id == usr.id)
-    )
+    pet_ids_result = await session.execute(select(PetModel.id).where(PetModel.user_id == usr.id))
     pet_ids = [r[0] for r in pet_ids_result.fetchall()]
 
     if pet_ids:

@@ -67,10 +67,12 @@ check "Python syntax (app/)" "$SYNTAX_ERRORS" "$SYNTAX_ERRORS error(s)"
 log ""
 log "=== 1b. Ruff lint ==="
 if command -v uvx &>/dev/null; then
-    uvx ruff check app/ --select E,F,W,I,N,UP,B --output-format concise >>"$LOG_FILE" 2>&1
-    check "ruff lint" $? ""
-    uvx ruff format app/ --check >>"$LOG_FILE" 2>&1
-    check "ruff format" $? ""
+    RUFF_LINT_EXIT=0
+    uvx ruff check app/ --config pyproject.toml --output-format concise >>"$LOG_FILE" 2>&1 || RUFF_LINT_EXIT=$?
+    check "ruff lint" "$RUFF_LINT_EXIT" ""
+    RUFF_FMT_EXIT=0
+    uvx ruff format app/ --check >>"$LOG_FILE" 2>&1 || RUFF_FMT_EXIT=$?
+    check "ruff format" "$RUFF_FMT_EXIT" ""
 else
     skip "uvx not found — skipping ruff"
 fi
@@ -167,7 +169,6 @@ CRITICAL_FILES=(
     "alembic.ini"
     "podman-compose.yml"
     "requirements.txt"
-    "autoresearch.md"
     "judge.sh"
 )
 FILE_ERRORS=0

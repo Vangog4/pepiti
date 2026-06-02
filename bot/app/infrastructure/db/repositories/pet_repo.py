@@ -1,6 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.infrastructure.db.models.pet import PetModel
+
 
 class PetRepository:
     def __init__(self, session: AsyncSession):

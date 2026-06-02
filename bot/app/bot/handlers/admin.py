@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 
-from aiogram import Router, types, F
+from aiogram import F, Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -28,11 +28,13 @@ class BroadcastState(StatesGroup):
 
 
 def _admin_keyboard() -> types.InlineKeyboardMarkup:
-    return types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast")],
-        [types.InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
-        [types.InlineKeyboardButton(text="🔗 Рефералы", callback_data="admin_ref_stats")],
-    ])
+    return types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [types.InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast")],
+            [types.InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
+            [types.InlineKeyboardButton(text="🔗 Рефералы", callback_data="admin_ref_stats")],
+        ]
+    )
 
 
 @router.message(Command("admin"))
@@ -109,7 +111,9 @@ async def grant_premium(
 ) -> None:
     parts = (msg.text or "").split()
     if len(parts) != 3:
-        await msg.answer("Использование: /grant_premium &lt;telegram_id&gt; &lt;days&gt;", parse_mode="HTML")
+        await msg.answer(
+            "Использование: /grant_premium &lt;telegram_id&gt; &lt;days&gt;", parse_mode="HTML"
+        )
         return
     try:
         telegram_id = int(parts[1])
@@ -130,18 +134,24 @@ async def grant_premium(
     user.is_premium = True
     user.subscription_expires_at = expires_at
 
-    user_repo.session.add(SubscriptionModel(
-        user_id=user.id,
-        plan_code="admin_grant",
-        status="active",
-        provider="admin",
-        expires_at=expires_at,
-    ))
+    user_repo.session.add(
+        SubscriptionModel(
+            user_id=user.id,
+            plan_code="admin_grant",
+            status="active",
+            provider="admin",
+            expires_at=expires_at,
+        )
+    )
     await user_repo.session.commit()
 
     name = user.first_name or user.username or str(telegram_id)
-    await alog.log(msg.from_user.id, "grant_premium", str(telegram_id),
-                   f"+{days} days, until {expires_at.strftime('%d.%m.%Y')}")
+    await alog.log(
+        msg.from_user.id,
+        "grant_premium",
+        str(telegram_id),
+        f"+{days} days, until {expires_at.strftime('%d.%m.%Y')}",
+    )
     logger.info("Admin granted %d days premium to user %s (%s)", days, telegram_id, name)
     await msg.answer(
         f"✅ <b>Premium выдан</b>\n\n"
@@ -181,8 +191,7 @@ async def revoke_premium(
     name = user.first_name or user.username or str(telegram_id)
     await alog.log(msg.from_user.id, "revoke_premium", str(telegram_id))
     await msg.answer(
-        f"✅ <b>Premium снят</b>\n\n"
-        f"Пользователь: <b>{name}</b> (<code>{telegram_id}</code>)",
+        f"✅ <b>Premium снят</b>\n\nПользователь: <b>{name}</b> (<code>{telegram_id}</code>)",
         parse_mode="HTML",
     )
 
@@ -196,9 +205,7 @@ async def lookup_user(
     parts = (msg.text or "").split(maxsplit=1)
     if len(parts) < 2 or not parts[1].strip():
         await msg.answer(
-            "Использование:\n"
-            "/user &lt;telegram_id&gt;\n"
-            "/user @username",
+            "Использование:\n/user &lt;telegram_id&gt;\n/user @username",
             parse_mode="HTML",
         )
         return
@@ -214,8 +221,10 @@ async def lookup_user(
         return
 
     pet_result = await user_repo.session.execute(
-        __import__("sqlalchemy", fromlist=["select"]).select(PetModel)
-        .where(PetModel.user_id == user.id).limit(1)
+        __import__("sqlalchemy", fromlist=["select"])
+        .select(PetModel)
+        .where(PetModel.user_id == user.id)
+        .limit(1)
     )
     pet = pet_result.scalar_one_or_none()
 
@@ -227,7 +236,8 @@ async def lookup_user(
 
     onboard = (
         f"✅ {user.onboarding_completed_at.strftime('%d.%m.%Y')}"
-        if user.onboarding_completed_at else "❌ не завершён"
+        if user.onboarding_completed_at
+        else "❌ не завершён"
     )
     pet_info = f"{pet.name} ({pet.breed or '—'})" if pet else "—"
     username_str = f"@{user.username}" if user.username else "—"
@@ -328,14 +338,16 @@ async def admin_broadcast_preview(msg: types.Message, state: FSMContext) -> None
     await state.set_state(BroadcastState.waiting_for_confirm)
     await msg.answer(
         "📋 <b>Предпросмотр:</b>\n\n" + text + "\n\n<i>Отправить?</i>",
-        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
-            [
-                types.InlineKeyboardButton(text="✅ Всем", callback_data="bc_all"),
-                types.InlineKeyboardButton(text="⭐ Premium", callback_data="bc_premium"),
-                types.InlineKeyboardButton(text="🆓 Free", callback_data="bc_free"),
-                types.InlineKeyboardButton(text="❌ Отмена", callback_data="broadcast_cancel"),
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="✅ Всем", callback_data="bc_all"),
+                    types.InlineKeyboardButton(text="⭐ Premium", callback_data="bc_premium"),
+                    types.InlineKeyboardButton(text="🆓 Free", callback_data="bc_free"),
+                    types.InlineKeyboardButton(text="❌ Отмена", callback_data="broadcast_cancel"),
+                ]
             ]
-        ]),
+        ),
         parse_mode="HTML",
     )
 
@@ -362,6 +374,7 @@ async def broadcast_confirm(
     await state.clear()
 
     from sqlalchemy import select as _select
+
     from app.infrastructure.db.models.user import UserModel
 
     q = _select(UserModel).where(UserModel.onboarding_completed_at.isnot(None))
@@ -374,7 +387,9 @@ async def broadcast_confirm(
     users = result.scalars().all()
     target_label = {"bc_all": "всем", "bc_premium": "Premium", "bc_free": "Free"}[target]
 
-    await cb.message.edit_text(f"⏳ Рассылка ({target_label}) запущена для {len(users)} пользователей...")
+    await cb.message.edit_text(
+        f"⏳ Рассылка ({target_label}) запущена для {len(users)} пользователей..."
+    )
 
     bot = cb.bot
     sent = failed = 0

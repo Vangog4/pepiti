@@ -1,7 +1,8 @@
 import asyncio
 import re
 import time
-from datetime import date, timedelta, datetime as _dt
+from datetime import date, timedelta
+from datetime import datetime as _dt
 from pathlib import Path
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -11,7 +12,8 @@ from sqlalchemy.orm import selectinload
 
 from app.api.auth import validate_init_data
 from app.core.config import settings
-from app.core.shop import SHOP_URL_TRAINING, SHOP_URL_LONGPLAY, SHOP_URL_BY_SIZE, SHOP_URL_MAIN
+from app.core.shop import SHOP_URL_BY_SIZE, SHOP_URL_LONGPLAY, SHOP_URL_MAIN, SHOP_URL_TRAINING
+from app.i18n import normalize_locale
 from app.infrastructure.db.models.coach_thread import CoachThreadModel
 from app.infrastructure.db.models.pet import PetModel
 from app.infrastructure.db.models.subscription import SubscriptionModel
@@ -21,10 +23,11 @@ from app.infrastructure.redis.admin_log import AdminLog
 from app.infrastructure.redis.metrics import BotMetrics
 from app.services.broadcast_service import run_broadcast
 from app.services.referral_service import (
-    REFERRAL_BONUS_DAYS, REFERRAL_MILESTONES,
-    milestone_label, milestone_reward,
+    REFERRAL_BONUS_DAYS,
+    REFERRAL_MILESTONES,
+    milestone_label,
+    milestone_reward,
 )
-from app.i18n import normalize_locale
 
 _VALID_THREAD_STATUSES = {"active", "archived", "all"}
 
@@ -35,22 +38,47 @@ _WEBAPP_DIR = Path(__file__).parent.parent / "webapp"
 # ── Validation constants ───────────────────────────────────────────────────────
 _VALID_TRAINING_LEVELS = {"1", "2", "3", "4", "5"}
 _VALID_AGE_CATEGORIES = {
-    "Щенок (до 4 мес)", "Щенок (4–12 мес)", "Молодой (1–3 года)",
-    "Взрослый (3–7 лет)", "Пожилой (7+ лет)",
+    "Щенок (до 4 мес)",
+    "Щенок (4–12 мес)",
+    "Молодой (1–3 года)",
+    "Взрослый (3–7 лет)",
+    "Пожилой (7+ лет)",
 }
 _VALID_TIMEZONES = {
     "UTC",
-    "UTC-12", "UTC-11", "UTC-10", "UTC-9", "UTC-8", "UTC-7", "UTC-6",
-    "UTC-5",  "UTC-4",  "UTC-3",  "UTC-2", "UTC-1",
-    "UTC+1",  "UTC+2",  "UTC+3",  "UTC+4", "UTC+5", "UTC+6", "UTC+7",
-    "UTC+8",  "UTC+9",  "UTC+10", "UTC+11", "UTC+12", "UTC+13", "UTC+14",
+    "UTC-12",
+    "UTC-11",
+    "UTC-10",
+    "UTC-9",
+    "UTC-8",
+    "UTC-7",
+    "UTC-6",
+    "UTC-5",
+    "UTC-4",
+    "UTC-3",
+    "UTC-2",
+    "UTC-1",
+    "UTC+1",
+    "UTC+2",
+    "UTC+3",
+    "UTC+4",
+    "UTC+5",
+    "UTC+6",
+    "UTC+7",
+    "UTC+8",
+    "UTC+9",
+    "UTC+10",
+    "UTC+11",
+    "UTC+12",
+    "UTC+13",
+    "UTC+14",
 }
 _VALID_LANGS = {"ru", "en", "de", "fr", "es", "pt"}
 _RE_TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 _ALLOWED_EVENTS = {"share_click", "copy_click"}
 _EVENT_KEY_MAP = {
     "share_click": BotMetrics.SHARE_CLICK,
-    "copy_click":  BotMetrics.COPY_CLICK,
+    "copy_click": BotMetrics.COPY_CLICK,
 }
 _RE_CAMP_ID = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
@@ -110,6 +138,7 @@ def _validate_settings(body: dict) -> list:
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
+
 
 @routes.get("/")
 async def index(request: web.Request) -> web.FileResponse:
@@ -195,7 +224,9 @@ async def dashboard(request: web.Request) -> web.Response:
 
         # Growth data — referral count + achieved milestones
         ref_count_row = await session.execute(
-            select(func.count()).select_from(UserModel).where(
+            select(func.count())
+            .select_from(UserModel)
+            .where(
                 UserModel.referrer_telegram_id == user.telegram_id,
                 UserModel.referral_bonus_given == True,
             )
@@ -215,23 +246,21 @@ async def dashboard(request: web.Request) -> web.Response:
     admin_stats = None
     if is_admin:
         async with session_factory() as adm_session:
-            r_total = await adm_session.execute(
-                select(func.count()).select_from(UserModel)
-            )
+            r_total = await adm_session.execute(select(func.count()).select_from(UserModel))
             r_premium = await adm_session.execute(
                 select(func.count()).select_from(UserModel).where(UserModel.is_premium == True)
             )
             # referral_bonus_given is a business-logic anti-duplication flag, NOT analytics truth
             r_refs = await adm_session.execute(
-                select(func.count()).select_from(UserModel).where(
-                    UserModel.referral_bonus_given == True
-                )
+                select(func.count())
+                .select_from(UserModel)
+                .where(UserModel.referral_bonus_given == True)
             )
         today = date.today()
         r_new_today = await adm_session.execute(
-            select(func.count()).select_from(UserModel).where(
-                func.date(UserModel.created_at) == today
-            )
+            select(func.count())
+            .select_from(UserModel)
+            .where(func.date(UserModel.created_at) == today)
         )
         r_active_today = await adm_session.execute(
             select(func.count(func.distinct(TrainingPlanModel.user_id)))
@@ -242,23 +271,25 @@ async def dashboard(request: web.Request) -> web.Response:
                 func.date(TrainingTaskModel.completed_at) == today,
             )
         )
-        onboarded_cnt = (await adm_session.execute(
-            select(func.count()).select_from(UserModel).where(
-                UserModel.onboarding_completed_at.isnot(None)
+        onboarded_cnt = (
+            await adm_session.execute(
+                select(func.count())
+                .select_from(UserModel)
+                .where(UserModel.onboarding_completed_at.isnot(None))
             )
-        )).scalar() or 0
+        ).scalar() or 0
         premium_cnt = r_premium.scalar() or 0
         va = await request.app["metrics"].get_voice_stats()
         admin_stats = {
-            "total_users":     r_total.scalar()       or 0,
-            "premium_users":   premium_cnt,
-            "referrals_given": r_refs.scalar()        or 0,
-            "new_today":       r_new_today.scalar()   or 0,
-            "active_today":    r_active_today.scalar() or 0,
-            "conversion_pct":  round(premium_cnt / onboarded_cnt * 100) if onboarded_cnt else 0,
-            "va_mark_done":    va["va_mark_done"],
+            "total_users": r_total.scalar() or 0,
+            "premium_users": premium_cnt,
+            "referrals_given": r_refs.scalar() or 0,
+            "new_today": r_new_today.scalar() or 0,
+            "active_today": r_active_today.scalar() or 0,
+            "conversion_pct": round(premium_cnt / onboarded_cnt * 100) if onboarded_cnt else 0,
+            "va_mark_done": va["va_mark_done"],
             "va_premium_gate": va["va_premium_gate"],
-            "va_fallback":     va["va_fallback"],
+            "va_fallback": va["va_fallback"],
         }
 
     payload = {
@@ -267,9 +298,7 @@ async def dashboard(request: web.Request) -> web.Response:
             "first_name": user.first_name,
             "is_premium": user.is_premium,
             "subscription_expires_at": (
-                user.subscription_expires_at.isoformat()
-                if user.subscription_expires_at
-                else None
+                user.subscription_expires_at.isoformat() if user.subscription_expires_at else None
             ),
         },
         "pet": (
@@ -297,7 +326,8 @@ async def dashboard(request: web.Request) -> web.Response:
             "base_bonus_days": REFERRAL_BONUS_DAYS,
             "referral_link": (
                 f"https://t.me/{settings.BOT_USERNAME}?start=ref_{user.telegram_id}"
-                if settings.BOT_USERNAME else None
+                if settings.BOT_USERNAME
+                else None
             ),
             "milestones": [
                 {
@@ -311,9 +341,9 @@ async def dashboard(request: web.Request) -> web.Response:
             ],
             "shop_urls": {
                 "training": SHOP_URL_TRAINING,
-                "longplay":  SHOP_URL_LONGPLAY,
-                "by_size":   SHOP_URL_BY_SIZE,
-                "main":      SHOP_URL_MAIN,
+                "longplay": SHOP_URL_LONGPLAY,
+                "by_size": SHOP_URL_BY_SIZE,
+                "main": SHOP_URL_MAIN,
             },
         },
         "meta": {"version": "1.4"},
@@ -330,7 +360,7 @@ async def toggle_task(request: web.Request) -> web.Response:
     try:
         task_id = int(request.match_info["task_id"])
     except (ValueError, KeyError):
-        raise web.HTTPBadRequest()
+        raise web.HTTPBadRequest() from None
 
     session_factory = request.app["session_factory"]
 
@@ -362,11 +392,13 @@ async def toggle_task(request: web.Request) -> web.Response:
         )
         all_done = remaining_row.scalar() == 0
 
-        return web.json_response({
-            "id": task.id,
-            "is_completed": task.is_completed,
-            "plan_completed": all_done,
-        })
+        return web.json_response(
+            {
+                "id": task.id,
+                "is_completed": task.is_completed,
+                "plan_completed": all_done,
+            }
+        )
 
 
 @routes.patch("/api/profile/pet")
@@ -375,8 +407,8 @@ async def update_pet(request: web.Request) -> web.Response:
 
     try:
         body = await request.json()
-    except Exception:
-        raise web.HTTPBadRequest()
+    except Exception as e:
+        raise web.HTTPBadRequest() from e
 
     errors = _validate_pet(body)
     if errors:
@@ -402,20 +434,30 @@ async def update_pet(request: web.Request) -> web.Response:
         for field in ("name", "breed", "goal", "training_level", "age_category"):
             if field in body:
                 val = body[field]
-                setattr(pet, field, val.strip() if isinstance(val, str) and val.strip() else None if not val else val)
+                setattr(
+                    pet,
+                    field,
+                    val.strip()
+                    if isinstance(val, str) and val.strip()
+                    else None
+                    if not val
+                    else val,
+                )
 
         await session.commit()
 
-        return web.json_response({
-            "ok": True,
-            "pet": {
-                "name": pet.name,
-                "breed": pet.breed,
-                "training_level": pet.training_level,
-                "goal": pet.goal,
-                "age_category": pet.age_category,
-            },
-        })
+        return web.json_response(
+            {
+                "ok": True,
+                "pet": {
+                    "name": pet.name,
+                    "breed": pet.breed,
+                    "training_level": pet.training_level,
+                    "goal": pet.goal,
+                    "age_category": pet.age_category,
+                },
+            }
+        )
 
 
 @routes.patch("/api/profile/settings")
@@ -424,8 +466,8 @@ async def update_settings(request: web.Request) -> web.Response:
 
     try:
         body = await request.json()
-    except Exception:
-        raise web.HTTPBadRequest()
+    except Exception as e:
+        raise web.HTTPBadRequest() from e
 
     errors = _validate_settings(body)
     if errors:
@@ -458,8 +500,8 @@ async def broadcast(request: web.Request) -> web.Response:
 
     try:
         body = await request.json()
-    except Exception:
-        raise web.HTTPBadRequest()
+    except Exception as e:
+        raise web.HTTPBadRequest() from e
 
     text = str(body.get("text") or "").strip()
     if not text:
@@ -468,8 +510,8 @@ async def broadcast(request: web.Request) -> web.Response:
         return web.json_response({"error": "Текст не более 4096 символов"}, status=422)
 
     button_text = str(body.get("button_text") or "").strip()
-    button_url  = str(body.get("button_url")  or "").strip()
-    camp_id     = str(body.get("camp_id")     or "").strip()
+    button_url = str(body.get("button_url") or "").strip()
+    camp_id = str(body.get("camp_id") or "").strip()
 
     if bool(button_text) != bool(button_url):
         return web.json_response(
@@ -508,9 +550,9 @@ async def broadcast(request: web.Request) -> web.Response:
             await metrics.create_campaign(camp_id, button_url, button_text, len(ids))
         else:
             tracked_url = button_url
-        reply_markup = InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text=button_text, url=tracked_url)
-        ]])
+        reply_markup = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text=button_text, url=tracked_url)]]
+        )
 
     alog: AdminLog | None = request.app.get("admin_log")
     if alog:
@@ -533,20 +575,24 @@ async def admin_referral_stats(request: web.Request) -> web.Response:
         # NOTE: referral_bonus_given is a business-logic dedup flag, NOT analytics truth.
         #       Use referrer_telegram_id IS NOT NULL for correct funnel counts.
         r_started = await session.execute(
-            select(func.count()).select_from(UserModel).where(
-                UserModel.referrer_telegram_id.isnot(None)
-            )
+            select(func.count())
+            .select_from(UserModel)
+            .where(UserModel.referrer_telegram_id.isnot(None))
         )
         # referrals_completed: arrived via referral AND completed onboarding
         r_completed = await session.execute(
-            select(func.count()).select_from(UserModel).where(
+            select(func.count())
+            .select_from(UserModel)
+            .where(
                 UserModel.referrer_telegram_id.isnot(None),
                 UserModel.onboarding_completed_at.isnot(None),
             )
         )
         # unique referrers: distinct users who brought at least one completed referral
         r_unique = await session.execute(
-            select(func.count(distinct(UserModel.referrer_telegram_id))).select_from(UserModel).where(
+            select(func.count(distinct(UserModel.referrer_telegram_id)))
+            .select_from(UserModel)
+            .where(
                 UserModel.referrer_telegram_id.isnot(None),
                 UserModel.onboarding_completed_at.isnot(None),
             )
@@ -564,7 +610,10 @@ async def admin_referral_stats(request: web.Request) -> web.Response:
         )
         # milestone breakdown: unique users who received each milestone tier
         r_ms = await session.execute(
-            select(SubscriptionModel.plan_code, func.count(distinct(SubscriptionModel.user_id)).label("cnt"))
+            select(
+                SubscriptionModel.plan_code,
+                func.count(distinct(SubscriptionModel.user_id)).label("cnt"),
+            )
             .where(SubscriptionModel.plan_code.like("milestone_%"))
             .group_by(SubscriptionModel.plan_code)
         )
@@ -572,13 +621,15 @@ async def admin_referral_stats(request: web.Request) -> web.Response:
     top_referrers = [{"telegram_id": row[0], "count": row[1]} for row in r_top.fetchall()]
     milestone_breakdown = {row[0]: row[1] for row in r_ms.fetchall()}
 
-    return web.json_response({
-        "referrals_started":   r_started.scalar()   or 0,
-        "referrals_completed": r_completed.scalar()  or 0,
-        "unique_referrers":    r_unique.scalar()     or 0,
-        "top_referrers":       top_referrers,
-        "milestone_breakdown": milestone_breakdown,
-    })
+    return web.json_response(
+        {
+            "referrals_started": r_started.scalar() or 0,
+            "referrals_completed": r_completed.scalar() or 0,
+            "unique_referrers": r_unique.scalar() or 0,
+            "top_referrers": top_referrers,
+            "milestone_breakdown": milestone_breakdown,
+        }
+    )
 
 
 @routes.post("/api/metrics/event")
@@ -586,8 +637,8 @@ async def track_event(request: web.Request) -> web.Response:
     _auth(request)
     try:
         body = await request.json()
-    except Exception:
-        raise web.HTTPBadRequest()
+    except Exception as e:
+        raise web.HTTPBadRequest() from e
     event = body.get("event", "")
     if event not in _ALLOWED_EVENTS:
         raise web.HTTPUnprocessableEntity()
@@ -626,6 +677,7 @@ async def admin_broadcast_stats(request: web.Request) -> web.Response:
 
 # ── Admin user management ──────────────────────────────────────────────────
 
+
 @routes.get("/api/admin/users")
 async def admin_users(request: web.Request) -> web.Response:
     telegram_id = _auth(request)
@@ -643,10 +695,12 @@ async def admin_users(request: web.Request) -> web.Response:
                 clean = q.lstrip("@")
                 stmt = (
                     select(UserModel)
-                    .where(or_(
-                        UserModel.username.ilike(f"%{clean}%"),
-                        UserModel.first_name.ilike(f"%{clean}%"),
-                    ))
+                    .where(
+                        or_(
+                            UserModel.username.ilike(f"%{clean}%"),
+                            UserModel.first_name.ilike(f"%{clean}%"),
+                        )
+                    )
                     .limit(20)
                 )
         else:
@@ -655,25 +709,26 @@ async def admin_users(request: web.Request) -> web.Response:
         result = await session.execute(stmt)
         users = result.scalars().all()
 
-    return web.json_response({
-        "users": [
-            {
-                "telegram_id": u.telegram_id,
-                "username": u.username,
-                "first_name": u.first_name,
-                "is_premium": u.is_premium,
-                "subscription_expires_at": (
-                    u.subscription_expires_at.strftime("%d.%m.%Y")
-                    if u.subscription_expires_at else None
-                ),
-                "onboarding_completed": u.onboarding_completed_at is not None,
-                "created_at": (
-                    u.created_at.strftime("%d.%m.%Y") if u.created_at else None
-                ),
-            }
-            for u in users
-        ]
-    })
+    return web.json_response(
+        {
+            "users": [
+                {
+                    "telegram_id": u.telegram_id,
+                    "username": u.username,
+                    "first_name": u.first_name,
+                    "is_premium": u.is_premium,
+                    "subscription_expires_at": (
+                        u.subscription_expires_at.strftime("%d.%m.%Y")
+                        if u.subscription_expires_at
+                        else None
+                    ),
+                    "onboarding_completed": u.onboarding_completed_at is not None,
+                    "created_at": (u.created_at.strftime("%d.%m.%Y") if u.created_at else None),
+                }
+                for u in users
+            ]
+        }
+    )
 
 
 @routes.post("/api/admin/grant-premium")
@@ -684,8 +739,8 @@ async def admin_grant_premium(request: web.Request) -> web.Response:
 
     try:
         body = await request.json()
-    except Exception:
-        raise web.HTTPBadRequest()
+    except Exception as e:
+        raise web.HTTPBadRequest() from e
 
     try:
         target_id = int(body.get("telegram_id", 0))
@@ -698,36 +753,47 @@ async def admin_grant_premium(request: web.Request) -> web.Response:
 
     session_factory = request.app["session_factory"]
     async with session_factory() as session:
-        user_row = await session.execute(select(UserModel).where(UserModel.telegram_id == target_id))
+        user_row = await session.execute(
+            select(UserModel).where(UserModel.telegram_id == target_id)
+        )
         user = user_row.scalar_one_or_none()
         if not user:
             return web.json_response({"error": "Пользователь не найден"}, status=404)
 
         from datetime import datetime as _dt2
+
         now = _dt2.utcnow()
         expires_at = max(user.subscription_expires_at or now, now) + timedelta(days=days)
         user.is_premium = True
         user.subscription_expires_at = expires_at
-        session.add(SubscriptionModel(
-            user_id=user.id,
-            plan_code="admin_grant",
-            status="active",
-            provider="admin",
-            expires_at=expires_at,
-        ))
+        session.add(
+            SubscriptionModel(
+                user_id=user.id,
+                plan_code="admin_grant",
+                status="active",
+                provider="admin",
+                expires_at=expires_at,
+            )
+        )
         await session.commit()
         name = user.first_name or user.username or str(target_id)
 
     alog: AdminLog | None = request.app.get("admin_log")
     if alog:
-        await alog.log(telegram_id, "grant_premium_webapp", str(target_id),
-                       f"+{days} days, until {expires_at.strftime('%d.%m.%Y')}")
+        await alog.log(
+            telegram_id,
+            "grant_premium_webapp",
+            str(target_id),
+            f"+{days} days, until {expires_at.strftime('%d.%m.%Y')}",
+        )
 
-    return web.json_response({
-        "ok": True,
-        "name": name,
-        "expires_at": expires_at.strftime("%d.%m.%Y"),
-    })
+    return web.json_response(
+        {
+            "ok": True,
+            "name": name,
+            "expires_at": expires_at.strftime("%d.%m.%Y"),
+        }
+    )
 
 
 @routes.post("/api/admin/revoke-premium")
@@ -739,12 +805,14 @@ async def admin_revoke_premium(request: web.Request) -> web.Response:
     try:
         body = await request.json()
         target_id = int(body.get("telegram_id", 0))
-    except Exception:
-        raise web.HTTPBadRequest()
+    except Exception as e:
+        raise web.HTTPBadRequest() from e
 
     session_factory = request.app["session_factory"]
     async with session_factory() as session:
-        user_row = await session.execute(select(UserModel).where(UserModel.telegram_id == target_id))
+        user_row = await session.execute(
+            select(UserModel).where(UserModel.telegram_id == target_id)
+        )
         user = user_row.scalar_one_or_none()
         if not user:
             return web.json_response({"error": "Пользователь не найден"}, status=404)
@@ -770,8 +838,8 @@ async def admin_send_message(request: web.Request) -> web.Response:
         body = await request.json()
         target_id = int(body.get("telegram_id", 0))
         text = str(body.get("text", "")).strip()
-    except Exception:
-        raise web.HTTPBadRequest()
+    except Exception as e:
+        raise web.HTTPBadRequest() from e
 
     if not text:
         return web.json_response({"error": "Текст не может быть пустым"}, status=422)
@@ -804,6 +872,7 @@ async def admin_actions(request: web.Request) -> web.Response:
 
 # ── Coach threads ───────────────────────────────────────────────────────────
 
+
 @routes.get("/api/coach/threads")
 async def list_coach_threads(request: web.Request) -> web.Response:
     telegram_id = _auth(request)
@@ -828,19 +897,88 @@ async def list_coach_threads(request: web.Request) -> web.Response:
         result = await session.execute(q)
         threads = result.scalars().all()
 
-        return web.json_response([
-            {
-                "id": th.id,
-                "title": th.title or None,
-                "status": th.status,
-                "message_count": th.message_count,
-                "summary": th.summary,
-                "created_at": th.created_at.isoformat() if th.created_at else None,
-                "updated_at": th.updated_at.isoformat() if th.updated_at else None,
-                "is_active": user.active_coach_thread_id == th.id,
-            }
-            for th in threads
-        ])
+        return web.json_response(
+            [
+                {
+                    "id": th.id,
+                    "title": th.title or None,
+                    "status": th.status,
+                    "message_count": th.message_count,
+                    "summary": th.summary,
+                    "created_at": th.created_at.isoformat() if th.created_at else None,
+                    "updated_at": th.updated_at.isoformat() if th.updated_at else None,
+                    "is_active": user.active_coach_thread_id == th.id,
+                }
+                for th in threads
+            ]
+        )
+
+
+@routes.get("/api/training/pdf")
+async def download_training_pdf(request: web.Request) -> web.Response:
+    """Return a PDF of the user's active training plan for today."""
+    telegram_id = _auth(request)
+    session_factory = request.app["session_factory"]
+
+    async with session_factory() as session:
+        user_row = await session.execute(
+            select(UserModel).where(UserModel.telegram_id == telegram_id)
+        )
+        user = user_row.scalar_one_or_none()
+        if user is None:
+            raise web.HTTPNotFound(reason="User not registered")
+
+        pet_row = await session.execute(
+            select(PetModel).where(PetModel.user_id == user.id).limit(1)
+        )
+        pet = pet_row.scalar_one_or_none()
+        if pet is None:
+            raise web.HTTPNotFound(reason="Pet not found")
+
+        plan_row = await session.execute(
+            select(TrainingPlanModel)
+            .where(
+                TrainingPlanModel.pet_id == pet.id,
+                TrainingPlanModel.is_active == True,
+                func.date(TrainingPlanModel.created_at) == date.today(),
+            )
+            .options(selectinload(TrainingPlanModel.tasks))
+            .limit(1)
+        )
+        plan = plan_row.scalar_one_or_none()
+        if plan is None:
+            raise web.HTTPNotFound(reason="No active plan for today")
+
+        tasks_data = sorted(
+            [
+                {
+                    "day_of_week": t.day_of_week,
+                    "title": t.title,
+                    "description": t.description,
+                    "duration_minutes": t.duration_minutes,
+                    "difficulty": t.difficulty,
+                    "is_completed": t.is_completed,
+                }
+                for t in plan.tasks
+            ],
+            key=lambda t: t["day_of_week"] or 0,
+        )
+
+    from app.services.pdf_service import generate_training_pdf
+
+    pdf_bytes = generate_training_pdf(
+        pet_name=pet.name or "Питомец",
+        plan_title=plan.title or "План тренировок",
+        plan_goal=plan.goal or "",
+        tasks=tasks_data,
+    )
+
+    safe_name = (pet.name or "plan").replace(" ", "_")
+    return web.Response(
+        body=pdf_bytes,
+        content_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="pepito_{safe_name}.pdf"'},
+    )
 
 
 @routes.patch("/api/coach/threads/{thread_id}/archive")
@@ -849,7 +987,7 @@ async def archive_coach_thread(request: web.Request) -> web.Response:
     try:
         thread_id = int(request.match_info["thread_id"])
     except (ValueError, KeyError):
-        raise web.HTTPBadRequest(reason="Invalid thread_id")
+        raise web.HTTPBadRequest(reason="Invalid thread_id") from None
 
     session_factory = request.app["session_factory"]
     async with session_factory() as session:

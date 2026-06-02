@@ -20,9 +20,7 @@ class CoachThreadRepository:
         await self.session.flush()
         return thread
 
-    async def list_by_user(
-        self, user_id: int, status: str | None = None
-    ) -> list[CoachThreadModel]:
+    async def list_by_user(self, user_id: int, status: str | None = None) -> list[CoachThreadModel]:
         q = select(CoachThreadModel).where(CoachThreadModel.user_id == user_id)
         if status:
             q = q.where(CoachThreadModel.status == status)

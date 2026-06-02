@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 
+from app.infrastructure.db.models.subscription import SubscriptionModel
 from app.infrastructure.db.repositories.subscription_repo import SubscriptionRepository
 from app.infrastructure.db.repositories.user_repo import UserRepository
-from app.infrastructure.db.models.subscription import SubscriptionModel
 
 PREMIUM_1M_STARS = 299
 PREMIUM_DURATION_DAYS = 30
@@ -15,7 +15,9 @@ class SubscriptionService:
 
     async def activate(self, user_id: int, telegram_id: int, charge_id: str) -> SubscriptionModel:
         expires_at = datetime.utcnow() + timedelta(days=PREMIUM_DURATION_DAYS)
-        sub = await self.sub_repo.create(user_id=user_id, expires_at=expires_at, charge_id=charge_id)
+        sub = await self.sub_repo.create(
+            user_id=user_id, expires_at=expires_at, charge_id=charge_id
+        )
 
         user = await self.user_repo.get_by_telegram_id(telegram_id)
         if user:

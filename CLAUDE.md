@@ -1,5 +1,13 @@
 # CLAUDE.md — Pepito Project
 
+## ⚡ СТАРТ СЕССИИ — читать ПЕРВЫМ
+```bash
+cat /root/pepito/SESSION_NOTES.md    # что было в работе
+cat /root/logseq-graph/journals/$(date +%Y_%m_%d).md 2>/dev/null | tail -40
+```
+**В течение сессии:** обновляй `SESSION_NOTES.md` при каждом важном шаге.
+**Без git commit/push без явного разрешения пользователя.**
+
 Монорепо двух связанных проектов одного бренда: Telegram-бот + Odoo интернет-магазин.
 
 ```

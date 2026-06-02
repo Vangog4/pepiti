@@ -1,4 +1,18 @@
-# CLAUDE.md
+# CLAUDE.md — pepito/bot (@pepitopetbot)
+
+## Sandbox Rules (ОБЯЗАТЕЛЬНО)
+- Runtime: **podman** и **podman-compose** ТОЛЬКО
+- Python: **uv** ТОЛЬКО (`uv run`, `uv add`)
+- **НИКОГДА:** `apt install`, `pip install` (глобально), `docker`
+- Scope: только `/root/pepito/` — не трогать другие проекты
+
+## Mode Declarations (объявлять в каждом ответе)
+- `[REVIEW MODE]` / `[DESIGN MODE]` / `[BUILD MODE]` / `[PATCH MODE]`
+
+## Hook Pipeline (глобальный, всегда активен)
+- PreToolUse:Bash → `safety_guard.py` (блокирует деструктивные команды)
+- PreToolUse:Write/Edit → `skill_vetter.py` (аудит кода)
+- PostToolUse → `run_pytest.sh` + `stuck_detector.py`
 
 ---
 
@@ -89,7 +103,7 @@ podman rm -f pepito-bot_bot_1
 # 2. Применить миграции вручную, пока контейнер не запущен
 #    (избегает гонки между стартом и alembic upgrade head внутри start.sh)
 podman run --rm \
-  --env-file /root/pepito-bot/.env \
+  --env-file /root/pepito/bot/.env \
   --net pepito-bot_default \
   localhost/pepito-bot_bot:latest \
   alembic upgrade head

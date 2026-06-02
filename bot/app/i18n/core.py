@@ -10,6 +10,7 @@ Key design decisions:
 - _SafeDict interpolation: missing kwargs leave the placeholder intact
 - Slavic plural rules for ru/uk; simple en rules for everything else
 """
+
 import importlib
 import re
 from typing import Any
@@ -29,15 +30,37 @@ _FALLBACK_CHAINS: dict[str, tuple[str, ...]] = {
 
 # Telegram language_code values → canonical locale
 _LOCALE_ALIASES: dict[str, str] = {
-    "ru": "ru", "ru-RU": "ru", "ru_RU": "ru",
-    "be": "ru",                  # Belarusian → Russian fallback
-    "uk": "ru",                  # Ukrainian → Russian fallback (uk locale removed)
-    "en": "en", "en-US": "en", "en_US": "en",
-    "en-GB": "en", "en-AU": "en", "en-CA": "en",
-    "de": "de", "de-DE": "de", "de_DE": "de", "de-AT": "de", "de-CH": "de",
-    "fr": "fr", "fr-FR": "fr", "fr_FR": "fr", "fr-BE": "fr", "fr-CA": "fr",
-    "es": "es", "es-ES": "es", "es_ES": "es", "es-MX": "es", "es-419": "es",
-    "pt": "pt", "pt-BR": "pt", "pt_BR": "pt", "pt-PT": "pt", "pt_PT": "pt",
+    "ru": "ru",
+    "ru-RU": "ru",
+    "ru_RU": "ru",
+    "be": "ru",  # Belarusian → Russian fallback
+    "uk": "ru",  # Ukrainian → Russian fallback (uk locale removed)
+    "en": "en",
+    "en-US": "en",
+    "en_US": "en",
+    "en-GB": "en",
+    "en-AU": "en",
+    "en-CA": "en",
+    "de": "de",
+    "de-DE": "de",
+    "de_DE": "de",
+    "de-AT": "de",
+    "de-CH": "de",
+    "fr": "fr",
+    "fr-FR": "fr",
+    "fr_FR": "fr",
+    "fr-BE": "fr",
+    "fr-CA": "fr",
+    "es": "es",
+    "es-ES": "es",
+    "es_ES": "es",
+    "es-MX": "es",
+    "es-419": "es",
+    "pt": "pt",
+    "pt-BR": "pt",
+    "pt_BR": "pt",
+    "pt-PT": "pt",
+    "pt_PT": "pt",
 }
 
 _LOCALE_CACHE: dict[str, dict[str, str]] = {}
@@ -45,6 +68,7 @@ _LOCALE_CACHE: dict[str, dict[str, str]] = {}
 
 class _SafeDict(dict):
     """dict that returns '{key}' for missing keys instead of raising KeyError."""
+
     def __missing__(self, key: str) -> str:
         return f"{{{key}}}"
 

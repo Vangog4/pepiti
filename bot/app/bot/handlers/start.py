@@ -4,12 +4,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
 from dependency_injector.wiring import Provide, inject
 
-from app.core.container import AppContainer
-from app.core.config import settings
-from app.services.user_service import UserService
-from app.bot.states.onboarding import OnboardingStates
 from app.bot.keyboards.main_menu import get_main_menu
-from app.i18n import t, normalize_locale
+from app.bot.states.onboarding import OnboardingStates
+from app.core.config import settings
+from app.core.container import AppContainer
+from app.i18n import normalize_locale, t
+from app.services.user_service import UserService
 
 router = Router(name="start_router")
 
@@ -50,7 +50,9 @@ async def cmd_start(
         await tmp.delete()
         await message.answer(
             t("onboarding.start.returning", lang, name=user.first_name),
-            reply_markup=get_main_menu(user.is_premium, webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang),
+            reply_markup=get_main_menu(
+                user.is_premium, webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
+            ),
         )
         return
 

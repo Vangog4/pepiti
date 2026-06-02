@@ -1,20 +1,20 @@
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, date
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
+from app.i18n import t
 from app.infrastructure.db.models.subscription import SubscriptionModel
 from app.infrastructure.db.models.user import UserModel
 from app.infrastructure.db.repositories.user_repo import UserRepository
-from app.i18n import t, normalize_locale
 
 REFERRAL_BONUS_DAYS = 3
 REFERRAL_DAILY_LIMIT = 10
 
 # Milestone tiers: count → extra bonus_days. plan_code used as idempotency key in SubscriptionModel.
 REFERRAL_MILESTONES = [
-    {"count": 3,  "bonus_days": 7,  "plan_code": "milestone_3"},
-    {"count": 5,  "bonus_days": 14, "plan_code": "milestone_5"},
+    {"count": 3, "bonus_days": 7, "plan_code": "milestone_3"},
+    {"count": 5, "bonus_days": 14, "plan_code": "milestone_5"},
     {"count": 10, "bonus_days": 30, "plan_code": "milestone_10"},
     {"count": 25, "bonus_days": 90, "plan_code": "milestone_25"},
 ]
@@ -66,24 +66,28 @@ class ReferralService:
         new_user.is_premium = True
         new_user.subscription_expires_at = max(new_user.subscription_expires_at or now, now) + bonus
         new_user.referral_bonus_given = True
-        session.add(SubscriptionModel(
-            user_id=new_user.id,
-            plan_code="referral_bonus",
-            status="active",
-            provider="referral",
-            expires_at=new_user.subscription_expires_at,
-        ))
+        session.add(
+            SubscriptionModel(
+                user_id=new_user.id,
+                plan_code="referral_bonus",
+                status="active",
+                provider="referral",
+                expires_at=new_user.subscription_expires_at,
+            )
+        )
 
         # Award referrer base bonus
         referrer.is_premium = True
         referrer.subscription_expires_at = max(referrer.subscription_expires_at or now, now) + bonus
-        session.add(SubscriptionModel(
-            user_id=referrer.id,
-            plan_code="referral_bonus",
-            status="active",
-            provider="referral",
-            expires_at=referrer.subscription_expires_at,
-        ))
+        session.add(
+            SubscriptionModel(
+                user_id=referrer.id,
+                plan_code="referral_bonus",
+                status="active",
+                provider="referral",
+                expires_at=referrer.subscription_expires_at,
+            )
+        )
 
         await session.commit()
         result.base_awarded = True
@@ -97,7 +101,9 @@ class ReferralService:
 
         return result
 
-    async def check_and_award_milestones(self, referrer: UserModel, count: int | None = None) -> dict | None:
+    async def check_and_award_milestones(
+        self, referrer: UserModel, count: int | None = None
+    ) -> dict | None:
         """Award any newly reached milestone bonuses. Returns the highest newly awarded milestone or None."""
         if count is None:
             count = await self.count_successful_referrals(referrer.telegram_id)
@@ -110,7 +116,9 @@ class ReferralService:
                 break
 
             already = await session.scalar(
-                select(func.count()).select_from(SubscriptionModel).where(
+                select(func.count())
+                .select_from(SubscriptionModel)
+                .where(
                     SubscriptionModel.user_id == referrer.id,
                     SubscriptionModel.plan_code == milestone["plan_code"],
                     SubscriptionModel.provider == "referral",
@@ -120,17 +128,18 @@ class ReferralService:
                 continue
 
             referrer.is_premium = True
-            referrer.subscription_expires_at = (
-                max(referrer.subscription_expires_at or now, now)
-                + timedelta(days=milestone["bonus_days"])
+            referrer.subscription_expires_at = max(
+                referrer.subscription_expires_at or now, now
+            ) + timedelta(days=milestone["bonus_days"])
+            session.add(
+                SubscriptionModel(
+                    user_id=referrer.id,
+                    plan_code=milestone["plan_code"],
+                    status="active",
+                    provider="referral",
+                    expires_at=referrer.subscription_expires_at,
+                )
             )
-            session.add(SubscriptionModel(
-                user_id=referrer.id,
-                plan_code=milestone["plan_code"],
-                status="active",
-                provider="referral",
-                expires_at=referrer.subscription_expires_at,
-            ))
             last_awarded = milestone
 
         if last_awarded:
@@ -197,27 +206,41 @@ async def notify_referrer(bot, result: ReferralAwardResult, lang: str) -> None:
         )
         next_m = REFERRAL_MILESTONES[idx + 1] if 0 <= idx < len(REFERRAL_MILESTONES) - 1 else None
         next_hint = (
-            t("referral.notify.next_hint", lang,
-              next_label=milestone_label(next_m, lang), next_reward=milestone_reward(next_m, lang))
+            t(
+                "referral.notify.next_hint",
+                lang,
+                next_label=milestone_label(next_m, lang),
+                next_reward=milestone_reward(next_m, lang),
+            )
             if next_m
             else t("referral.notify.all_done", lang)
         )
         text = t(
-            "referral.notify.milestone", lang,
-            label=milestone_label(m, lang), count=count, reward=milestone_reward(m, lang),
+            "referral.notify.milestone",
+            lang,
+            label=milestone_label(m, lang),
+            count=count,
+            reward=milestone_reward(m, lang),
             next_hint=next_hint,
         )
     else:
         next_m = next((ms for ms in REFERRAL_MILESTONES if count < ms["count"]), None)
         ladder_hint = (
-            t("referral.notify.next_hint", lang,
-              next_label=milestone_label(next_m, lang), next_reward=milestone_reward(next_m, lang))
+            t(
+                "referral.notify.next_hint",
+                lang,
+                next_label=milestone_label(next_m, lang),
+                next_reward=milestone_reward(next_m, lang),
+            )
             if next_m
             else t("referral.notify.all_done", lang)
         )
         text = t(
-            "referral.notify.base", lang,
-            days=REFERRAL_BONUS_DAYS, count=count, ladder_hint=ladder_hint,
+            "referral.notify.base",
+            lang,
+            days=REFERRAL_BONUS_DAYS,
+            count=count,
+            ladder_hint=ladder_hint,
         )
 
     try:

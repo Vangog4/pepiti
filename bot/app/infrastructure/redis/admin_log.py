@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
 
@@ -12,13 +12,15 @@ class AdminLog:
         self._client = aioredis.from_url(redis_url, decode_responses=True)
 
     async def log(self, admin_id: int, action: str, target: str = "", detail: str = "") -> None:
-        entry = json.dumps({
-            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
-            "admin": admin_id,
-            "action": action,
-            "target": target,
-            "detail": detail,
-        })
+        entry = json.dumps(
+            {
+                "ts": datetime.now(UTC).strftime("%Y-%m-%d %H:%M"),
+                "admin": admin_id,
+                "action": action,
+                "target": target,
+                "detail": detail,
+            }
+        )
         pipe = self._client.pipeline()
         pipe.lpush(_KEY, entry)
         pipe.ltrim(_KEY, 0, _MAX_ENTRIES - 1)

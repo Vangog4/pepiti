@@ -2,26 +2,29 @@ import io
 import logging
 from datetime import datetime
 
-from aiogram import Router, types, F
+from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
 from dependency_injector.wiring import Provide, inject
 
-from app.core.container import AppContainer
-from app.core.config import settings
-from app.services.user_service import UserService
-from app.services.pet_service import PetService
-from app.services.training_service import TrainingService
-from app.services.referral_service import (
-    ReferralService, REFERRAL_BONUS_DAYS, notify_referrer,
-    milestone_label, milestone_reward,
-)
-from app.services.ai_service import AiService
-from app.infrastructure.db.models.pet import PetModel
-from app.bot.states.onboarding import OnboardingStates
 from app.bot.keyboards.main_menu import get_main_menu
 from app.bot.keyboards.training import get_task_keyboard
-from app.i18n import t, normalize_locale
+from app.bot.states.onboarding import OnboardingStates
+from app.core.config import settings
+from app.core.container import AppContainer
+from app.i18n import normalize_locale, t
+from app.infrastructure.db.models.pet import PetModel
+from app.services.ai_service import AiService
+from app.services.pet_service import PetService
+from app.services.referral_service import (
+    REFERRAL_BONUS_DAYS,
+    ReferralService,
+    milestone_label,
+    milestone_reward,
+    notify_referrer,
+)
+from app.services.training_service import TrainingService
+from app.services.user_service import UserService
 
 logger = logging.getLogger(__name__)
 router = Router(name="onboarding_router")
@@ -70,12 +73,14 @@ async def _finish_onboarding(
     await user_svc.repo.session.commit()
     referral_result = await ref_svc.award_if_eligible(user)
     if referral_result.base_awarded:
-        await notify_referrer(msg.bot, referral_result, normalize_locale(referral_result.referrer_lang))
+        await notify_referrer(
+            msg.bot, referral_result, normalize_locale(referral_result.referrer_lang)
+        )
     await state.clear()
 
     # Notify admins about new user
-    uname = f"@{user.username}" if user.username else "—"
-    ref_note = f"\nПришёл по реферальной ссылке" if referral_result.base_awarded else ""
+    uname = "@" + user.username if user.username else "—"
+    ref_note = "\nПришёл по реферальной ссылке" if referral_result.base_awarded else ""
     notify_text = (
         f"🐾 <b>Новый пользователь!</b>\n"
         f"{user.first_name or '—'} ({uname})\n"
@@ -92,7 +97,12 @@ async def _finish_onboarding(
         welcome += t("onboarding.done.referral_bonus", lang, days=REFERRAL_BONUS_DAYS)
     if referral_result.milestone:
         m = referral_result.milestone
-        welcome += t("onboarding.done.milestone", lang, label=milestone_label(m, lang), reward=milestone_reward(m, lang))
+        welcome += t(
+            "onboarding.done.milestone",
+            lang,
+            label=milestone_label(m, lang),
+            reward=milestone_reward(m, lang),
+        )
 
     await msg.answer(welcome, parse_mode="HTML")
 
@@ -148,7 +158,9 @@ async def _handle_message(
     user = await user_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
     lang = normalize_locale(user.language_code)
 
-    thinking = await msg.answer(t("onboarding.ai.thinking", lang), reply_markup=ReplyKeyboardRemove())
+    thinking = await msg.answer(
+        t("onboarding.ai.thinking", lang), reply_markup=ReplyKeyboardRemove()
+    )
 
     profile = await ai_svc.extract_pet_profile(
         language_code=lang,
@@ -179,7 +191,9 @@ async def _handle_message(
         return
 
     # Complete onboarding (either all fields present, or second attempt regardless)
-    await _finish_onboarding(msg, state, profile, state_data, user_svc, pet_svc, ref_svc, t_svc, lang)
+    await _finish_onboarding(
+        msg, state, profile, state_data, user_svc, pet_svc, ref_svc, t_svc, lang
+    )
 
 
 @router.message(OnboardingStates.collecting, F.text | F.voice | F.photo)
@@ -193,7 +207,9 @@ async def process_collecting(
     t_svc: TrainingService = Provide[AppContainer.training_service],
     ai_svc: AiService = Provide[AppContainer.ai_service],
 ) -> None:
-    await _handle_message(msg, state, user_svc, pet_svc, ref_svc, t_svc, ai_svc, is_clarification=False)
+    await _handle_message(
+        msg, state, user_svc, pet_svc, ref_svc, t_svc, ai_svc, is_clarification=False
+    )
 
 
 @router.message(OnboardingStates.clarifying, F.text | F.voice)
@@ -207,4 +223,6 @@ async def process_clarifying(
     t_svc: TrainingService = Provide[AppContainer.training_service],
     ai_svc: AiService = Provide[AppContainer.ai_service],
 ) -> None:
-    await _handle_message(msg, state, user_svc, pet_svc, ref_svc, t_svc, ai_svc, is_clarification=True)
+    await _handle_message(
+        msg, state, user_svc, pet_svc, ref_svc, t_svc, ai_svc, is_clarification=True
+    )

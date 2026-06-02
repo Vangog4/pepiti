@@ -18,15 +18,12 @@ STRINGS: dict[str, str] = {
     "menu.main.streak.days.one": "dia",
     "menu.main.streak.days.few": "dias",
     "menu.main.streak.days.many": "dias",
-
     # ── Common buttons ─────────────────────────────────────────────────────────
     "common.back_menu.btn": "🔙 Menu principal",
     "common.back.btn": "🔙 Voltar",
     "common.menu.btn": "🔙 Menu",
-
     # ── Errors / Guards ────────────────────────────────────────────────────────
     "error.no_pet": "Por favor, complete o registro primeiro: /start",
-
     # ── Settings ───────────────────────────────────────────────────────────────
     "settings.main.title": "⚙️ <b>Configurações</b>",
     "settings.main.reminder_on": "⏰ Lembretes: <b>{time} ({tz})</b>",
@@ -38,7 +35,6 @@ STRINGS: dict[str, str] = {
     "settings.language.btn": "🌐 Idioma",
     "settings.btn": "⚙️ Configurações",
     "settings.reminder.btn": "⏰ Lembretes",
-
     # ── Onboarding (Stage 9: conversational AI) ────────────────────────────────
     "onboarding.start.returning": "Bem-vindo(a) de volta, {name}! 🐾\nO que faremos hoje?",
     "onboarding.ai.welcome": (
@@ -66,7 +62,6 @@ STRINGS: dict[str, str] = {
     "onboarding.done.plan_loading": "🐾 <i>Criando o primeiro plano de treinamento para {pet}...</i>",
     "onboarding.done.first_plan": "🏋️ <b>Aqui está seu primeiro plano!</b>\n\n{plan}",
     "onboarding.done.fallback": "Escolha por onde começar 👇",
-
     # ── Training ───────────────────────────────────────────────────────────────
     "training.loading": "🐾 <i>Criando um plano para {name}...</i>",
     "training.refresh.confirm": "🔄 <b>Gerar um novo plano?</b>\n\nSeu progresso atual será reiniciado.",
@@ -76,8 +71,7 @@ STRINGS: dict[str, str] = {
     "training.refresh.toast": "Gerando novo plano…",
     "training.week.loading": "📅 <i>Criando plano semanal para {name}...</i>",
     "training.week.refresh.confirm": (
-        "🔄 <b>Gerar um novo plano semanal?</b>\n\n"
-        "Seu progresso semanal atual será redefinido."
+        "🔄 <b>Gerar um novo plano semanal?</b>\n\nSeu progresso semanal atual será redefinido."
     ),
     "training.week.refresh.loading": "🔄 <i>Gerando novo plano semanal para {name}...</i>",
     "training.week.empty": (
@@ -99,12 +93,10 @@ STRINGS: dict[str, str] = {
     "training.share.text": "{name} e eu treinamos {n} {days} seguidos com o Pepito! 🐾",
     "training.share.btn": "📤 Compartilhar",
     "training.done": (
-        "\n\n🎉 <b>Treino concluído! Excelente trabalho!</b>\n"
-        "{emoji} Treinos no total: {n}"
+        "\n\n🎉 <b>Treino concluído! Excelente trabalho!</b>\n{emoji} Treinos no total: {n}"
     ),
     "training.week_done": (
-        "\n\n🎉 <b>{day} concluído! Excelente trabalho!</b>\n"
-        "{emoji} Treinos no total: {n}"
+        "\n\n🎉 <b>{day} concluído! Excelente trabalho!</b>\n{emoji} Treinos no total: {n}"
     ),
     "training.stats.empty": (
         "🌱 <b>Você está apenas começando!</b>\n\n"
@@ -133,7 +125,6 @@ STRINGS: dict[str, str] = {
     "coach.display.voice": "[🎤 Voz]",
     "coach.display.video": "[🎥 Vídeo]",
     "defaults.pet_name": "Animal",
-
     # ── AI / Coach ─────────────────────────────────────────────────────────────
     "ai.fallback": (
         "🧠 <b>O treinador está lidando com muitas solicitações agora</b>\n\n"
@@ -189,12 +180,10 @@ STRINGS: dict[str, str] = {
     "coach.role.owner": "Dono",
     "coach.role.trainer": "Treinador",
     "coach.summary.header": "Breve resumo da conversa anterior:",
-
     # ── Voice-action (hands-free task reporting) ───────────────────────────────
     "voice_action.thinking": "🐾 <i>Analisando...</i>",
     "voice_action.marked": "✅ Marquei a tarefa <b>{task}</b> como concluída!\n\n",
     "voice_action.all_done": "🎉 Todas as tarefas do dia concluídas! Ótimo treino!",
-
     # ── Stats ──────────────────────────────────────────────────────────────────
     "stats.header": "📊 <b>Estatísticas de {name}</b>\n\n",
     "stats.days_with_us": "🗓 Dias com o Pepito: <b>{n}</b>\n",
@@ -203,7 +192,6 @@ STRINGS: dict[str, str] = {
     "stats.motivate": "<i>Cada sessão torna {name} melhor!</i> 🚀",
     "stats.analysis.premium.btn": "🧠 Análise IA detalhada ⭐",
     "stats.analysis.free.btn": "🧠 Análise IA de progresso",
-
     # ── Profile ────────────────────────────────────────────────────────────────
     "profile.header": "🐾 <b>{name}</b>\n\n",
     "profile.breed": "🐕 Raça: {val}\n",
@@ -221,7 +209,6 @@ STRINGS: dict[str, str] = {
     "profile.issues.none": "nenhum",
     "profile.schedule.unknown": "não especificado",
     "profile.edit.btn": "✏️ Editar perfil",
-
     # ── Shop ───────────────────────────────────────────────────────────────────
     "shop.title": "🛒 <b>Loja PepitoPet</b>",
     "shop.body": (
@@ -233,7 +220,6 @@ STRINGS: dict[str, str] = {
     "shop.cat.longplay.btn": "🦴 Mastigáveis de longa duração",
     "shop.cat.by_size.btn": "🐶 Filhotes & por tamanho",
     "shop.cat.all.btn": "🛒 Loja completa",
-
     # ── Invite / Referral ──────────────────────────────────────────────────────
     "invite.title": "🐾 <b>Convide um amigo — bônus para os dois!</b>",
     "invite.link_label": "🔗 Seu link:",
@@ -251,24 +237,21 @@ STRINGS: dict[str, str] = {
     "invite.how.1": "1. Compartilhe seu link",
     "invite.how.2": "2. O amigo inicia o bot e preenche o perfil",
     "invite.how.3": "3. Vocês dois recebem +{days} dias Premium",
-
     # ── Referral push-notifications ────────────────────────────────────────────
     "referral.notify.base": (
         "🎉 Um novo amigo entrou pelo seu link!\n"
         "+{days} dias Premium adicionados. Convidados: <b>{count}</b>\n{ladder_hint}"
     ),
     "referral.notify.milestone": (
-        "🏆 <b>{label}!</b>\n\n"
-        "Você convidou {count} amigos e ganha <b>{reward}</b>!\n{next_hint}"
+        "🏆 <b>{label}!</b>\n\nVocê convidou {count} amigos e ganha <b>{reward}</b>!\n{next_hint}"
     ),
     "referral.notify.next_hint": "🎯 Próximo objetivo: {next_label} → {next_reward}",
     "referral.notify.all_done": "👑 Todas as recompensas desbloqueadas!",
-    "referral.milestone.label.3":  "3 amigos",
-    "referral.milestone.label.5":  "5 amigos",
+    "referral.milestone.label.3": "3 amigos",
+    "referral.milestone.label.5": "5 amigos",
     "referral.milestone.label.10": "10 amigos",
     "referral.milestone.label.25": "25 amigos",
     "referral.reward.days": "+{days} dias",
-
     # ── Premium / Subscription ─────────────────────────────────────────────────
     "premium.active.title": "⭐ <b>Premium ativo</b>",
     "premium.active.expires": "Válido até: <b>{date}</b>",
@@ -301,7 +284,6 @@ STRINGS: dict[str, str] = {
         "✔ Seu reembolso foi processado. Assinatura Premium desativada.\n"
         "Se isso for um erro, entre em contato com o suporte."
     ),
-
     # ── Reminders ─────────────────────────────────────────────────────────────
     "reminder.title": "⏰ <b>Lembretes</b>",
     "reminder.status.off": "🔕 <b>Desativado</b>",
@@ -315,10 +297,7 @@ STRINGS: dict[str, str] = {
         "Exemplos: <code>09:00</code>, <code>18:30</code>\n\n"
         "<i>Você pode alterar seu fuso horário em ✏️ Editar perfil → 🌍 Fuso horário.</i>"
     ),
-    "reminder.disabled": (
-        "🔕 <b>Desativado</b>\n"
-        "Você não receberá mais lembretes diários."
-    ),
+    "reminder.disabled": ("🔕 <b>Desativado</b>\nVocê não receberá mais lembretes diários."),
     "reminder.saved": "✅ <b>Pronto!</b> Lembrete definido para <b>{time} ({tz})</b> todo dia.",
     "reminder.error.format": (
         "⚠️ Formato inválido. Digite o horário como <code>HH:MM</code>, ex. <code>09:30</code>."
@@ -344,7 +323,6 @@ STRINGS: dict[str, str] = {
         "Dias de treino: <b>{days}</b>\n"
         "Obtenha análises detalhadas com Premium — /menu."
     ),
-
     # ── Help / Support ─────────────────────────────────────────────────────────
     "help.guide.title": "❓ <b>Guia do Pepito</b>\n\n",
     "help.guide.plan.header": "🧠 <b>Como funcionam os planos de treino</b>\n",
@@ -372,7 +350,6 @@ STRINGS: dict[str, str] = {
     "help.support.btn": "💬 Contatar suporte",
     "help.btn": "❓ Ajuda",
     "help.back_settings.btn": "🔙 Voltar às configurações",
-
     # ── Edit Profile ───────────────────────────────────────────────────────────
     "edit_profile.title": "✏️ <b>Editar perfil</b>\n\nO que deseja alterar?",
     "edit_profile.field.name.prompt": "Digite o novo nome do pet no chat:",

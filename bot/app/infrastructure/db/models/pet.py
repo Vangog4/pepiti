@@ -1,6 +1,8 @@
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import relationship
+
 from app.infrastructure.db.models.base import Base
+
 
 class PetModel(Base):
     __tablename__ = "pets"

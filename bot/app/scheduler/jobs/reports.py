@@ -1,11 +1,12 @@
 import logging
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-from sqlalchemy.ext.asyncio import async_sessionmaker
-from aiogram import Bot
 
+from aiogram import Bot
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.orm import selectinload
+
+from app.i18n import normalize_locale, t
 from app.infrastructure.db.models.user import UserModel
-from app.i18n import t, normalize_locale
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,11 @@ async def send_weekly_reports(session_factory: async_sessionmaker, bot: Bot) -> 
         try:
             days = user.pets[0].training_days if user.pets else 0
             lang = normalize_locale(user.language_code)
-            name = (user.first_name or t("reminder.push.friend", lang)).replace("<", "&lt;").replace(">", "&gt;")
+            name = (
+                (user.first_name or t("reminder.push.friend", lang))
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            )
             if user.is_premium:
                 text = t("report.weekly.premium", lang, name=name, days=days)
             else:

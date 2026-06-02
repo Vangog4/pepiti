@@ -2,28 +2,30 @@ from aiogram import Router, types
 from aiogram.filters import Command
 from dependency_injector.wiring import Provide, inject
 
-from app.core.container import AppContainer
-from app.core.config import settings
-from app.services.user_service import UserService
 from app.bot.keyboards.main_menu import get_help_keyboard
-from app.i18n import t, normalize_locale
+from app.core.config import settings
+from app.core.container import AppContainer
+from app.i18n import normalize_locale, t
+from app.services.user_service import UserService
 
 router = Router(name="help_router")
 
 
 def build_help_text(lang: str) -> str:
-    return "".join([
-        t("help.guide.title", lang),
-        t("help.guide.plan.header", lang),
-        t("help.guide.plan.text", lang),
-        t("help.guide.streak.header", lang),
-        t("help.guide.streak.text", lang),
-        t("help.guide.shop.header", lang),
-        t("help.guide.shop.text", lang),
-        t("help.guide.premium.header", lang),
-        t("help.guide.premium.text", lang),
-        t("help.guide.commands", lang),
-    ])
+    return "".join(
+        [
+            t("help.guide.title", lang),
+            t("help.guide.plan.header", lang),
+            t("help.guide.plan.text", lang),
+            t("help.guide.streak.header", lang),
+            t("help.guide.streak.text", lang),
+            t("help.guide.shop.header", lang),
+            t("help.guide.shop.text", lang),
+            t("help.guide.premium.header", lang),
+            t("help.guide.premium.text", lang),
+            t("help.guide.commands", lang),
+        ]
+    )
 
 
 @router.message(Command("help"))

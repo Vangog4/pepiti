@@ -3,32 +3,32 @@ from aiogram.fsm.context import FSMContext
 from dependency_injector.wiring import Provide, inject
 
 from app.bot.keyboards.edit_profile import (
-    get_edit_profile_keyboard,
-    get_training_level_inline,
-    get_size_inline,
-    get_age_inline,
-    get_timezone_inline,
     TIMEZONE_OPTIONS,
+    get_age_inline,
+    get_edit_profile_keyboard,
+    get_size_inline,
+    get_timezone_inline,
+    get_training_level_inline,
     translate_option,
 )
 from app.bot.keyboards.main_menu import get_back_keyboard
 from app.bot.states.edit_profile import EditProfileStates
 from app.core.container import AppContainer
+from app.i18n import normalize_locale, t
 from app.services.pet_service import PetService
 from app.services.user_service import UserService
-from app.i18n import t, normalize_locale
 
 router = Router(name="edit_profile_router")
 
 # Maps field name → (i18n_prompt_key, keyboard_factory | None)
 FIELD_LABELS: dict[str, tuple[str, object]] = {
-    "name":           ("edit_profile.field.name.prompt",     None),
-    "breed":          ("edit_profile.field.breed.prompt",    None),
-    "goal":           ("edit_profile.field.goal.prompt",     None),
-    "training_level": ("edit_profile.field.level.prompt",    get_training_level_inline),
-    "age_category":   ("edit_profile.field.age.prompt",      get_age_inline),
-    "size_category":  ("edit_profile.field.size.prompt",     get_size_inline),
-    "timezone":       ("edit_profile.field.timezone.prompt", get_timezone_inline),
+    "name": ("edit_profile.field.name.prompt", None),
+    "breed": ("edit_profile.field.breed.prompt", None),
+    "goal": ("edit_profile.field.goal.prompt", None),
+    "training_level": ("edit_profile.field.level.prompt", get_training_level_inline),
+    "age_category": ("edit_profile.field.age.prompt", get_age_inline),
+    "size_category": ("edit_profile.field.size.prompt", get_size_inline),
+    "timezone": ("edit_profile.field.timezone.prompt", get_timezone_inline),
 }
 
 # Fields that belong to UserModel (not PetModel)
@@ -37,15 +37,15 @@ USER_FIELDS = {"timezone"}
 # VALUE_MAP maps callback_data → stored DB value.
 # Size/age values are stored as Russian strings (data model constraint; migration required to change).
 VALUE_MAP = {
-    "set_size_small":  "Маленький (до 10 кг)",
+    "set_size_small": "Маленький (до 10 кг)",
     "set_size_medium": "Средний (10–25 кг)",
-    "set_size_large":  "Крупный (25–45 кг)",
-    "set_size_giant":  "Гигант (45+ кг)",
-    "set_age_1":       "Щенок (до 4 мес)",
-    "set_age_2":       "Щенок (4–12 мес)",
-    "set_age_3":       "Молодой (1–3 года)",
-    "set_age_4":       "Взрослый (3–7 лет)",
-    "set_age_5":       "Пожилой (7+ лет)",
+    "set_size_large": "Крупный (25–45 кг)",
+    "set_size_giant": "Гигант (45+ кг)",
+    "set_age_1": "Щенок (до 4 мес)",
+    "set_age_2": "Щенок (4–12 мес)",
+    "set_age_3": "Молодой (1–3 года)",
+    "set_age_4": "Взрослый (3–7 лет)",
+    "set_age_5": "Пожилой (7+ лет)",
 }
 for i in range(1, 6):
     VALUE_MAP[f"set_level_{i}"] = str(i)
@@ -125,7 +125,9 @@ async def save_profile_field_inline(
         pet = await p_svc.get_pet(usr.id)
         if not pet:
             await state.clear()
-            await cb.message.edit_text(t("error.no_pet", lang), reply_markup=get_back_keyboard(lang))
+            await cb.message.edit_text(
+                t("error.no_pet", lang), reply_markup=get_back_keyboard(lang)
+            )
             await cb.answer()
             return
         setattr(pet, field_name, new_value)
@@ -133,10 +135,20 @@ async def save_profile_field_inline(
     await state.clear()
 
     display_value = translate_option(new_value, lang)
-    kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text=t("edit_profile.edit_more.btn", lang), callback_data="menu_edit_profile")],
-        [types.InlineKeyboardButton(text=t("common.back_menu.btn", lang), callback_data="menu_main")],
-    ])
+    kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text=t("edit_profile.edit_more.btn", lang), callback_data="menu_edit_profile"
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text=t("common.back_menu.btn", lang), callback_data="menu_main"
+                )
+            ],
+        ]
+    )
     await cb.message.edit_text(
         t("edit_profile.saved", lang, value=display_value),
         reply_markup=kb,
@@ -187,10 +199,20 @@ async def save_profile_field_text(
         await p_svc.repo.session.commit()
     await state.clear()
 
-    kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text=t("edit_profile.edit_more.btn", lang), callback_data="menu_edit_profile")],
-        [types.InlineKeyboardButton(text=t("common.back_menu.btn", lang), callback_data="menu_main")],
-    ])
+    kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text=t("edit_profile.edit_more.btn", lang), callback_data="menu_edit_profile"
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text=t("common.back_menu.btn", lang), callback_data="menu_main"
+                )
+            ],
+        ]
+    )
     await msg.answer(
         t("edit_profile.saved", lang, value=text),
         reply_markup=kb,

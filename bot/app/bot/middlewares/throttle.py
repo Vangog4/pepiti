@@ -1,4 +1,5 @@
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import redis.asyncio as aioredis
 from aiogram import BaseMiddleware
@@ -7,7 +8,7 @@ from aiogram.types import TelegramObject, Update
 
 class ThrottlingMiddleware(BaseMiddleware):
     _MSG_WINDOW_MS = 1000
-    _CB_WINDOW_MS  = 500
+    _CB_WINDOW_MS = 500
 
     def __init__(self, redis_url: str, admin_ids: set[int]) -> None:
         self._redis = aioredis.from_url(redis_url)
@@ -31,9 +32,7 @@ class ThrottlingMiddleware(BaseMiddleware):
         if not user_id or user_id in self._admin_ids:
             return await handler(event, data)
 
-        allowed = await self._redis.set(
-            f"throttle:{key_type}:{user_id}", 1, nx=True, px=window_ms
-        )
+        allowed = await self._redis.set(f"throttle:{key_type}:{user_id}", 1, nx=True, px=window_ms)
         if not allowed:
             if event.callback_query:
                 await event.callback_query.answer()

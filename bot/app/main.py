@@ -5,13 +5,13 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 from aiohttp import web
 
-from app.core.config import settings
-from app.core.container import AppContainer
+from app.api.server import create_web_app
 from app.bot.handlers import setup_routers
 from app.bot.middlewares.db import DbSessionMiddleware
 from app.bot.middlewares.throttle import ThrottlingMiddleware
+from app.core.config import settings
+from app.core.container import AppContainer
 from app.scheduler.setup import create_scheduler
-from app.api.server import create_web_app
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL, logging.INFO),
@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 
 
 async def main() -> None:
+    import sentry_sdk
+
+    if settings.SENTRY_DSN:
+        sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.1, environment="production")
+
     container = AppContainer()
     logger.info("Starting bot...")
 
@@ -29,10 +34,12 @@ async def main() -> None:
     dp = Dispatcher(storage=storage)
 
     session_factory = container.session_factory()
-    dp.update.middleware(ThrottlingMiddleware(
-        redis_url=settings.REDIS_URL,
-        admin_ids=set(settings.ADMIN_TELEGRAM_IDS),
-    ))
+    dp.update.middleware(
+        ThrottlingMiddleware(
+            redis_url=settings.REDIS_URL,
+            admin_ids=set(settings.ADMIN_TELEGRAM_IDS),
+        )
+    )
     dp.update.middleware(DbSessionMiddleware(session_factory))
 
     setup_routers(dp)

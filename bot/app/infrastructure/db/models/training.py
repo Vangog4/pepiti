@@ -1,6 +1,8 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, JSON, func
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import relationship
+
 from app.infrastructure.db.models.base import Base
+
 
 class TrainingPlanModel(Base):
     __tablename__ = "training_plans"

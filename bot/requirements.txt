@@ -10,3 +10,5 @@ dependency-injector>=4.41.0
 google-genai>=1.0.0
 apscheduler>=3.10.0
 aiohttp>=3.9.0
+fpdf2>=2.7.0
+sentry-sdk>=2.0

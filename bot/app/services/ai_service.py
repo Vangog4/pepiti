@@ -28,6 +28,7 @@ def _lang_instruction(lang: str) -> str:
     name = _LANG_NAMES.get(lang, "Russian (русский)")
     return f"\n\nIMPORTANT: Respond strictly in {name}."
 
+
 _FALLBACK_PLAN_RU = {
     "title": "Базовая тренировка",
     "tasks": [
@@ -124,6 +125,7 @@ def _get_fallback_plan(lang: str) -> dict:
 def _get_fallback_week_plan(lang: str) -> dict:
     return _FALLBACK_WEEK_PLAN_RU if lang == "ru" else _FALLBACK_WEEK_PLAN_EN
 
+
 # Telegram HTML whitelist — only these tag names are allowed in parse_mode=HTML
 _TG_ALLOWED_TAGS = frozenset({"b", "i", "u", "s", "code", "pre", "a"})
 
@@ -179,19 +181,19 @@ class AiService:
             '  "title": "короткое название плана (до 50 символов)",\n'
             '  "goal": "цель тренировки",\n'
             '  "tasks": [\n'
-            '    {\n'
+            "    {\n"
             '      "title": "название упражнения",\n'
             '      "description": "шаг 1\\nшаг 2\\nшаг 3",\n'
             '      "duration_minutes": 5,\n'
             '      "difficulty": "easy"\n'
-            '    },\n'
-            '    {\n'
+            "    },\n"
+            "    {\n"
             '      "title": "название второго упражнения",\n'
             '      "description": "шаг 1\\nшаг 2\\nшаг 3",\n'
             '      "duration_minutes": 8,\n'
             '      "difficulty": "medium"\n'
-            '    }\n'
-            '  ],\n'
+            "    }\n"
+            "  ],\n"
             '  "tip": "один практичный совет владельцу"\n'
             "}\n\n"
             "difficulty: easy, medium или hard. Ровно 2 упражнения.\n"
@@ -201,9 +203,9 @@ class AiService:
         )
 
         try:
-            raw = (await self.client.aio.models.generate_content(
-                model=_MODEL, contents=prompt
-            )).text
+            raw = (
+                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
+            ).text
             return self._parse_json(raw) or _get_fallback_plan(lang)
         except Exception:
             return _get_fallback_plan(lang)
@@ -224,14 +226,14 @@ class AiService:
             '  "title": "короткое название плана (до 50 символов)",\n'
             '  "goal": "цель недели",\n'
             '  "days": [\n'
-            '    {\n'
+            "    {\n"
             '      "day": 1,\n'
             '      "tasks": [\n'
             '        {"title": "название", "description": "шаг 1\\nшаг 2\\nшаг 3", "duration_minutes": 5, "difficulty": "easy"},\n'
             '        {"title": "название", "description": "шаг 1\\nшаг 2\\nшаг 3", "duration_minutes": 8, "difficulty": "medium"}\n'
-            '      ]\n'
-            '    }\n'
-            '  ]\n'
+            "      ]\n"
+            "    }\n"
+            "  ]\n"
             "}\n\n"
             "Ровно 7 объектов в days (day: 1..7), ровно 2 задачи в каждом. difficulty: easy, medium или hard.\n"
             "В полях title и description используй только обычные буквы, цифры и знаки препинания. "
@@ -240,9 +242,9 @@ class AiService:
         )
 
         try:
-            raw = (await self.client.aio.models.generate_content(
-                model=_MODEL, contents=prompt
-            )).text
+            raw = (
+                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
+            ).text
             data = self._parse_week_json(raw)
             return data if data else _get_fallback_week_plan(lang)
         except Exception:
@@ -266,9 +268,9 @@ class AiService:
             + _lang_instruction(lang)
         )
         try:
-            raw = (await self.client.aio.models.generate_content(
-                model=_MODEL, contents=prompt
-            )).text or ""
+            raw = (
+                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
+            ).text or ""
             return self._postprocess(raw)
         except Exception as e:
             return f"⚠️ Explanation unavailable. Try again later.\n<i>{e}</i>"
@@ -313,9 +315,9 @@ class AiService:
             types.Part.from_text(prompt),
         ]
         try:
-            raw = (await self.client.aio.models.generate_content(
-                model=_MODEL, contents=contents
-            )).text or ""
+            raw = (
+                await self.client.aio.models.generate_content(model=_MODEL, contents=contents)
+            ).text or ""
             return self._postprocess(raw)
         except Exception as e:
             return f"⚠️ Media analysis unavailable. Try again.\n<i>{e}</i>"
@@ -342,9 +344,9 @@ class AiService:
             + _lang_instruction(lang)
         )
         try:
-            raw = (await self.client.aio.models.generate_content(
-                model=_MODEL, contents=prompt
-            )).text or ""
+            raw = (
+                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
+            ).text or ""
             return self._postprocess(raw)
         except Exception as e:
             return f"⚠️ Trainer is busy. Try again later.\n<i>{e}</i>"
@@ -370,14 +372,16 @@ class AiService:
             + _lang_instruction(lang)
         )
         try:
-            raw = (await self.client.aio.models.generate_content(
-                model=_MODEL, contents=prompt
-            )).text or ""
+            raw = (
+                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
+            ).text or ""
             return self._postprocess(raw)
         except Exception as e:
             return f"⚠️ Analysis unavailable. Try later.\n<i>{e}</i>"
 
-    async def premium_deep_analysis(self, pet: PetModel, training_days: int, lang: str = "ru") -> str:
+    async def premium_deep_analysis(
+        self, pet: PetModel, training_days: int, lang: str = "ru"
+    ) -> str:
         breed = pet.breed or "unknown breed"
         age = pet.age_category or "unknown age"
         goal = pet.goal or "general training"
@@ -405,9 +409,9 @@ class AiService:
             + _lang_instruction(lang)
         )
         try:
-            raw = (await self.client.aio.models.generate_content(
-                model=_MODEL, contents=prompt
-            )).text or ""
+            raw = (
+                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
+            ).text or ""
             return self._postprocess(raw)
         except Exception as e:
             return f"⚠️ Deep analysis unavailable. Try later.\n<i>{e}</i>"
@@ -438,7 +442,14 @@ class AiService:
 
         known_parts: list[str] = []
         if partial:
-            for key in ("name", "breed", "age_category", "size_category", "behavior_issues", "goal"):
+            for key in (
+                "name",
+                "breed",
+                "age_category",
+                "size_category",
+                "behavior_issues",
+                "goal",
+            ):
                 if partial.get(key):
                     known_parts.append(f"{key}: {partial[key]}")
         known_block = ", ".join(known_parts) if known_parts else "nothing"
@@ -477,15 +488,17 @@ class AiService:
         if audio_bytes and mime_type:
             contents: object = [
                 types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
-                types.Part.from_text(prompt + "User sent a voice message — transcribe and extract."),
+                types.Part.from_text(
+                    prompt + "User sent a voice message — transcribe and extract."
+                ),
             ]
         else:
             contents = prompt + f"User message: {text or ''}"
 
         try:
-            raw = (await self.client.aio.models.generate_content(
-                model=_MODEL, contents=contents
-            )).text or ""
+            raw = (
+                await self.client.aio.models.generate_content(model=_MODEL, contents=contents)
+            ).text or ""
             parsed = self._parse_profile_json(raw)
             if parsed is not None:
                 return parsed
@@ -495,7 +508,9 @@ class AiService:
         # Safe fallback — preserve any partial, flag all core fields as missing
         result: dict = dict(partial or {})
         already_known = {k for k in ("name", "breed", "age_category") if result.get(k)}
-        result["missing_fields"] = [f for f in ("name", "breed", "age_category") if f not in already_known]
+        result["missing_fields"] = [
+            f for f in ("name", "breed", "age_category") if f not in already_known
+        ]
         result["clarify_question"] = None
         return result
 
@@ -514,8 +529,12 @@ class AiService:
              or {"action": "none", "message": "..."}
         """
         lang_name = {
-            "ru": "русском", "en": "English", "de": "Deutsch",
-            "fr": "français", "es": "español", "pt": "português",
+            "ru": "русском",
+            "en": "English",
+            "de": "Deutsch",
+            "fr": "français",
+            "es": "español",
+            "pt": "português",
         }.get(language_code, "русском")
 
         if task_titles:
@@ -560,9 +579,9 @@ class AiService:
             contents = prompt + (f"\n\nСообщение: {text}" if text else "")
 
         try:
-            raw = (await self.client.aio.models.generate_content(
-                model=_MODEL, contents=contents
-            )).text or ""
+            raw = (
+                await self.client.aio.models.generate_content(model=_MODEL, contents=contents)
+            ).text or ""
         except Exception:
             return {"action": "none", "message": "⚠️ Не удалось обработать. Попробуй ещё раз."}
 
@@ -720,9 +739,9 @@ class AiService:
             "Верни ТОЛЬКО название, без кавычек, без пояснений."
         )
         try:
-            return (await self.client.aio.models.generate_content(
-                model=_MODEL, contents=prompt
-            )).text.strip()[:60]
+            return (
+                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
+            ).text.strip()[:60]
         except Exception:
             return ""
 
@@ -741,8 +760,8 @@ class AiService:
             "Резюме (только текст, без заголовков):"
         )
         try:
-            return (await self.client.aio.models.generate_content(
-                model=_MODEL, contents=prompt
-            )).text.strip()[:800]
+            return (
+                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
+            ).text.strip()[:800]
         except Exception:
             return existing_summary or ""

@@ -1,16 +1,16 @@
 import logging
 
-from aiogram import Router, types, F
+from aiogram import F, Router, types
 from dependency_injector.wiring import Provide, inject
 from sqlalchemy import update
 
-from app.core.container import AppContainer
-from app.services.subscription_service import SubscriptionService, PREMIUM_1M_STARS
-from app.services.user_service import UserService
 from app.bot.keyboards.main_menu import get_back_keyboard
-from app.infrastructure.db.repositories.subscription_repo import SubscriptionRepository
+from app.core.container import AppContainer
+from app.i18n import normalize_locale, t
 from app.infrastructure.db.models.user import UserModel
-from app.i18n import t, normalize_locale
+from app.infrastructure.db.repositories.subscription_repo import SubscriptionRepository
+from app.services.subscription_service import PREMIUM_1M_STARS, SubscriptionService
+from app.services.user_service import UserService
 
 logger = logging.getLogger(__name__)
 router = Router(name="subscription_router")
@@ -41,13 +41,21 @@ async def show_premium(
 
     await cb.message.edit_text(
         t("premium.upsell.body", lang, price=PREMIUM_1M_STARS),
-        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(
-                text=t("premium.upsell.btn", lang, price=PREMIUM_1M_STARS),
-                callback_data="buy_premium",
-            )],
-            [types.InlineKeyboardButton(text=t("common.back_menu.btn", lang), callback_data="menu_main")],
-        ]),
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(
+                        text=t("premium.upsell.btn", lang, price=PREMIUM_1M_STARS),
+                        callback_data="buy_premium",
+                    )
+                ],
+                [
+                    types.InlineKeyboardButton(
+                        text=t("common.back_menu.btn", lang), callback_data="menu_main"
+                    )
+                ],
+            ]
+        ),
         parse_mode="HTML",
     )
 
@@ -67,7 +75,9 @@ async def send_invoice(
         payload="premium_1m",
         provider_token="",  # пустая строка для Telegram Stars (XTR)
         currency="XTR",
-        prices=[types.LabeledPrice(label=t("premium.invoice.label", lang), amount=PREMIUM_1M_STARS)],
+        prices=[
+            types.LabeledPrice(label=t("premium.invoice.label", lang), amount=PREMIUM_1M_STARS)
+        ],
     )
 
 
@@ -90,7 +100,11 @@ async def successful_payment(
         telegram_id=msg.from_user.id,
         charge_id=payment.telegram_payment_charge_id,
     )
-    logger.info("Premium activated for user %s (charge %s)", msg.from_user.id, payment.telegram_payment_charge_id)
+    logger.info(
+        "Premium activated for user %s (charge %s)",
+        msg.from_user.id,
+        payment.telegram_payment_charge_id,
+    )
     lang = normalize_locale(usr.language_code)
     await msg.answer(t("premium.activated", lang), parse_mode="HTML")
 

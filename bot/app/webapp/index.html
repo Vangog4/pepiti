@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@2/dist/lottie-player.js"></script>
   <link rel="stylesheet" href="/webapp/style.css">
 </head>
 <body>
@@ -15,10 +16,14 @@
 
     <!-- ── Loading ─────────────────────────────────────────── -->
     <div id="state-loading" class="fullscreen-state">
-      <div class="paw-loader">
-        <div class="loader-ring"></div>
-        <span class="loader-paw">🐾</span>
-      </div>
+      <lottie-player
+        src="https://assets10.lottiefiles.com/packages/lf20_jcikwtux.json"
+        background="transparent"
+        speed="1"
+        style="width:80px;height:80px"
+        autoplay
+        loop>
+      </lottie-player>
       <p id="loading-text" class="loading-text">Загружаем...</p>
     </div>
 
@@ -53,6 +58,16 @@
               <div class="pet-hero-meta" id="pet-hero-meta"></div>
             </div>
             <div id="streak-chip" class="streak-chip hidden">
+              <lottie-player
+                id="streak-lottie"
+                src="https://assets3.lottiefiles.com/packages/lf20_uu0x8lqv.json"
+                background="transparent"
+                speed="1"
+                style="width:32px;height:32px;display:inline-block"
+                autoplay
+                loop
+                class="hidden">
+              </lottie-player>
               <span class="streak-fire">🏋️</span>
               <span id="streak-value"></span>
             </div>
@@ -98,6 +113,9 @@
             <div class="done-emoji">🎉</div>
             <p id="all-done-title" class="done-title">Все задачи выполнены!</p>
             <p id="all-done-sub" class="done-sub">Отличная тренировка сегодня</p>
+          </div>
+          <div id="pdf-btn-wrap" class="hidden" style="margin-top:12px;text-align:center">
+            <button id="btn-download-pdf" class="btn-secondary btn-full" onclick="downloadTrainingPDF()">📄 Скачать план PDF</button>
           </div>
         </div>
 
@@ -345,10 +363,14 @@
         </div>
 
         <div id="coach-loading" class="coach-loading hidden">
-          <div class="paw-loader" style="width:36px;height:36px;">
-            <div class="loader-ring"></div>
-            <span class="loader-paw" style="font-size:1rem;">🐾</span>
-          </div>
+          <lottie-player
+            src="https://assets10.lottiefiles.com/packages/lf20_jcikwtux.json"
+            background="transparent"
+            speed="1"
+            style="width:48px;height:48px"
+            autoplay
+            loop>
+          </lottie-player>
         </div>
 
       </div><!-- /tab-coach -->

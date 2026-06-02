@@ -763,6 +763,8 @@
     if (weekly_progress.training_days > 0) {
       show("streak-chip");
       $("streak-value").textContent = weekly_progress.training_days;
+      const streakLottie = document.getElementById("streak-lottie");
+      if (streakLottie) streakLottie.classList.remove("hidden");
     }
 
     $("stat-done").textContent = weekly_progress.completed_tasks;
@@ -833,11 +835,13 @@
     list.innerHTML = "";
     hide("state-no-plan");
     hide("state-all-done");
+    hide("pdf-btn-wrap");
 
     if (tasks.length === 0) { show("state-no-plan"); return; }
 
     tasks.forEach(task => list.appendChild(buildTaskEl(task)));
     if (tasks.every(t => t.is_completed)) show("state-all-done");
+    show("pdf-btn-wrap");
   }
 
   function buildTaskEl(task) {
@@ -1827,6 +1831,44 @@
     if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return _ui("msg_2");
     return _ui("msg_many");
   }
+
+  // ── PDF export ─────────────────────────────────────────────────────
+  async function downloadTrainingPDF() {
+    const btn = $("btn-download-pdf");
+    if (!btn) return;
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "⏳ Генерирую...";
+
+    try {
+      const res = await fetch("/api/training/pdf", {
+        headers: { "X-Telegram-Init-Data": initData },
+      });
+      if (!res.ok) {
+        try { tg.showAlert("Не удалось создать PDF. Попробуй ещё раз."); } catch (_) {}
+        return;
+      }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      const pet  = _data && _data.pet && _data.pet.name ? _data.pet.name : "plan";
+      a.href     = url;
+      a.download = "pepito_" + pet.replace(/\s+/g, "_") + ".pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      try { tg.HapticFeedback.notificationOccurred("success"); } catch (_) {}
+    } catch (_) {
+      try { tg.showAlert("Ошибка соединения. Попробуй ещё раз."); } catch (_) {}
+    } finally {
+      btn.disabled = false;
+      btn.textContent = origText;
+    }
+  }
+
+  // Expose for inline onclick
+  window.downloadTrainingPDF = downloadTrainingPDF;
 
   // ── Boot ───────────────────────────────────────────────────────────
   load();

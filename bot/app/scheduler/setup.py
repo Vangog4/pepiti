@@ -1,12 +1,13 @@
 import logging
+
+from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from aiogram import Bot
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.scheduler.jobs.expire_subscriptions import expire_subscriptions
 from app.scheduler.jobs.reminders import send_daily_reminders
 from app.scheduler.jobs.reports import send_weekly_reports
-from app.scheduler.jobs.expire_subscriptions import expire_subscriptions
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,9 @@ def create_scheduler(session_factory: async_sessionmaker, bot: Bot) -> AsyncIOSc
 
     scheduler.add_job(
         send_daily_reminders,
-        trigger=CronTrigger(minute="*", timezone="UTC"),  # runs every minute, filters by reminder_time
+        trigger=CronTrigger(
+            minute="*", timezone="UTC"
+        ),  # runs every minute, filters by reminder_time
         kwargs={"session_factory": session_factory, "bot": bot},
         id="daily_reminders",
         replace_existing=True,

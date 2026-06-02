@@ -8,10 +8,10 @@ from app.infrastructure.db.repositories.coach_thread_repo import CoachThreadRepo
 
 
 class CoachService:
-    CONTEXT_MESSAGES_FREE = 10     # 5 exchanges
+    CONTEXT_MESSAGES_FREE = 10  # 5 exchanges
     CONTEXT_MESSAGES_PREMIUM = 20  # 10 exchanges
-    MAX_STORED_MESSAGES = 40       # 20 exchanges
-    SUMMARY_EVERY = 10             # refresh summary every 10th exchange
+    MAX_STORED_MESSAGES = 40  # 20 exchanges
+    SUMMARY_EVERY = 10  # refresh summary every 10th exchange
 
     def __init__(self, repo: CoachThreadRepository):
         self.repo = repo
@@ -37,16 +37,14 @@ class CoachService:
 
         return "\n".join(parts)
 
-    def save_exchange(
-        self, thread: CoachThreadModel, question: str, answer: str
-    ) -> None:
+    def save_exchange(self, thread: CoachThreadModel, question: str, answer: str) -> None:
         """Append exchange to thread messages (in-memory). Caller must commit session."""
         messages = list(thread.messages_json or [])
         ts = int(time.time())
         messages.append({"role": "user", "content": question[:1000], "ts": ts})
         messages.append({"role": "coach", "content": answer[:4000], "ts": ts})
         if len(messages) > self.MAX_STORED_MESSAGES:
-            messages = messages[-self.MAX_STORED_MESSAGES:]
+            messages = messages[-self.MAX_STORED_MESSAGES :]
         thread.messages_json = messages
         thread.message_count = (thread.message_count or 0) + 1
         flag_modified(thread, "messages_json")

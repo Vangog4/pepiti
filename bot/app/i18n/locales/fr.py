@@ -18,15 +18,12 @@ STRINGS: dict[str, str] = {
     "menu.main.streak.days.one": "jour",
     "menu.main.streak.days.few": "jours",
     "menu.main.streak.days.many": "jours",
-
     # ── Common buttons ─────────────────────────────────────────────────────────
     "common.back_menu.btn": "🔙 Menu principal",
     "common.back.btn": "🔙 Retour",
     "common.menu.btn": "🔙 Menu",
-
     # ── Errors / Guards ────────────────────────────────────────────────────────
     "error.no_pet": "Veuillez d'abord compléter l'inscription : /start",
-
     # ── Settings ───────────────────────────────────────────────────────────────
     "settings.main.title": "⚙️ <b>Paramètres</b>",
     "settings.main.reminder_on": "⏰ Rappels : <b>{time} ({tz})</b>",
@@ -38,7 +35,6 @@ STRINGS: dict[str, str] = {
     "settings.language.btn": "🌐 Langue",
     "settings.btn": "⚙️ Paramètres",
     "settings.reminder.btn": "⏰ Rappels",
-
     # ── Onboarding (Stage 9: conversational AI) ────────────────────────────────
     "onboarding.start.returning": "Bon retour, {name} ! 🐾\nQue faisons-nous aujourd'hui ?",
     "onboarding.ai.welcome": (
@@ -66,7 +62,6 @@ STRINGS: dict[str, str] = {
     "onboarding.done.plan_loading": "🐾 <i>Création du premier plan d'entraînement pour {pet}...</i>",
     "onboarding.done.first_plan": "🏋️ <b>Voici votre premier plan !</b>\n\n{plan}",
     "onboarding.done.fallback": "Choisissez par où commencer 👇",
-
     # ── Training ───────────────────────────────────────────────────────────────
     "training.loading": "🐾 <i>Création d'un plan pour {name}...</i>",
     "training.refresh.confirm": "🔄 <b>Générer un nouveau plan ?</b>\n\nVotre progression actuelle sera réinitialisée.",
@@ -99,12 +94,10 @@ STRINGS: dict[str, str] = {
     "training.share.text": "{name} et moi avons entraîné {n} {days} de suite avec Pepito ! 🐾",
     "training.share.btn": "📤 Partager",
     "training.done": (
-        "\n\n🎉 <b>Entraînement terminé ! Bravo !</b>\n"
-        "{emoji} Entraînements au total : {n}"
+        "\n\n🎉 <b>Entraînement terminé ! Bravo !</b>\n{emoji} Entraînements au total : {n}"
     ),
     "training.week_done": (
-        "\n\n🎉 <b>{day} terminé ! Bravo !</b>\n"
-        "{emoji} Entraînements au total : {n}"
+        "\n\n🎉 <b>{day} terminé ! Bravo !</b>\n{emoji} Entraînements au total : {n}"
     ),
     "training.stats.empty": (
         "🌱 <b>Vous débutez tout juste !</b>\n\n"
@@ -133,7 +126,6 @@ STRINGS: dict[str, str] = {
     "coach.display.voice": "[🎤 Vocal]",
     "coach.display.video": "[🎥 Vidéo]",
     "defaults.pet_name": "Animal",
-
     # ── AI / Coach ─────────────────────────────────────────────────────────────
     "ai.fallback": (
         "🧠 <b>Le coach traite trop de demandes en ce moment</b>\n\n"
@@ -189,12 +181,10 @@ STRINGS: dict[str, str] = {
     "coach.role.owner": "Propriétaire",
     "coach.role.trainer": "Coach",
     "coach.summary.header": "Bref résumé de la conversation précédente :",
-
     # ── Voice-action (hands-free task reporting) ───────────────────────────────
     "voice_action.thinking": "🐾 <i>Analyse en cours...</i>",
     "voice_action.marked": "✅ J'ai marqué la tâche <b>{task}</b> comme accomplie !\n\n",
     "voice_action.all_done": "🎉 Toutes les tâches du jour accomplies ! Excellent entraînement !",
-
     # ── Stats ──────────────────────────────────────────────────────────────────
     "stats.header": "📊 <b>Statistiques de {name}</b>\n\n",
     "stats.days_with_us": "🗓 Jours avec Pepito : <b>{n}</b>\n",
@@ -203,7 +193,6 @@ STRINGS: dict[str, str] = {
     "stats.motivate": "<i>Chaque séance améliore {name} !</i> 🚀",
     "stats.analysis.premium.btn": "🧠 Analyse IA approfondie ⭐",
     "stats.analysis.free.btn": "🧠 Analyse IA de progression",
-
     # ── Profile ────────────────────────────────────────────────────────────────
     "profile.header": "🐾 <b>{name}</b>\n\n",
     "profile.breed": "🐕 Race : {val}\n",
@@ -221,7 +210,6 @@ STRINGS: dict[str, str] = {
     "profile.issues.none": "aucun",
     "profile.schedule.unknown": "non spécifié",
     "profile.edit.btn": "✏️ Modifier le profil",
-
     # ── Shop ───────────────────────────────────────────────────────────────────
     "shop.title": "🛒 <b>Boutique PepitoPet</b>",
     "shop.body": (
@@ -233,7 +221,6 @@ STRINGS: dict[str, str] = {
     "shop.cat.longplay.btn": "🦴 Mâchouilles longue durée",
     "shop.cat.by_size.btn": "🐶 Chiots & par taille",
     "shop.cat.all.btn": "🛒 Toute la boutique",
-
     # ── Invite / Referral ──────────────────────────────────────────────────────
     "invite.title": "🐾 <b>Invitez un ami — bonus pour tous les deux !</b>",
     "invite.link_label": "🔗 Votre lien :",
@@ -251,7 +238,6 @@ STRINGS: dict[str, str] = {
     "invite.how.1": "1. Partagez votre lien",
     "invite.how.2": "2. L'ami lance le bot et remplit son profil",
     "invite.how.3": "3. Vous recevez tous les deux +{days} jours Premium",
-
     # ── Referral push-notifications ────────────────────────────────────────────
     "referral.notify.base": (
         "🎉 Un nouvel ami a rejoint via votre lien !\n"
@@ -263,12 +249,11 @@ STRINGS: dict[str, str] = {
     ),
     "referral.notify.next_hint": "🎯 Prochain objectif : {next_label} → {next_reward}",
     "referral.notify.all_done": "👑 Toutes les récompenses débloquées !",
-    "referral.milestone.label.3":  "3 amis",
-    "referral.milestone.label.5":  "5 amis",
+    "referral.milestone.label.3": "3 amis",
+    "referral.milestone.label.5": "5 amis",
     "referral.milestone.label.10": "10 amis",
     "referral.milestone.label.25": "25 amis",
     "referral.reward.days": "+{days} jours",
-
     # ── Premium / Subscription ─────────────────────────────────────────────────
     "premium.active.title": "⭐ <b>Premium actif</b>",
     "premium.active.expires": "Valide jusqu'au : <b>{date}</b>",
@@ -301,7 +286,6 @@ STRINGS: dict[str, str] = {
         "✔ Votre remboursement a été traité. Abonnement Premium désactivé.\n"
         "Si c'est une erreur, veuillez contacter le support."
     ),
-
     # ── Reminders ─────────────────────────────────────────────────────────────
     "reminder.title": "⏰ <b>Rappels</b>",
     "reminder.status.off": "🔕 <b>Désactivé</b>",
@@ -315,10 +299,7 @@ STRINGS: dict[str, str] = {
         "Exemples : <code>09:00</code>, <code>18:30</code>\n\n"
         "<i>Vous pouvez changer votre fuseau horaire dans ✏️ Modifier le profil → 🌍 Fuseau horaire.</i>"
     ),
-    "reminder.disabled": (
-        "🔕 <b>Désactivé</b>\n"
-        "Vous ne recevrez plus de rappels quotidiens."
-    ),
+    "reminder.disabled": ("🔕 <b>Désactivé</b>\nVous ne recevrez plus de rappels quotidiens."),
     "reminder.saved": "✅ <b>Fait !</b> Rappel défini pour <b>{time} ({tz})</b> chaque jour.",
     "reminder.error.format": (
         "⚠️ Format invalide. Entrez l'heure comme <code>HH:MM</code>, ex. <code>09:30</code>."
@@ -344,7 +325,6 @@ STRINGS: dict[str, str] = {
         "Jours d'entraînement : <b>{days}</b>\n"
         "Obtiens des analyses détaillées avec Premium — /menu."
     ),
-
     # ── Help / Support ─────────────────────────────────────────────────────────
     "help.guide.title": "❓ <b>Guide Pepito</b>\n\n",
     "help.guide.plan.header": "🧠 <b>Comment fonctionnent les plans d'entraînement</b>\n",
@@ -372,7 +352,6 @@ STRINGS: dict[str, str] = {
     "help.support.btn": "💬 Contacter le support",
     "help.btn": "❓ Aide",
     "help.back_settings.btn": "🔙 Retour aux paramètres",
-
     # ── Edit Profile ───────────────────────────────────────────────────────────
     "edit_profile.title": "✏️ <b>Modifier le profil</b>\n\nQue souhaitez-vous modifier ?",
     "edit_profile.field.name.prompt": "Entrez le nouveau nom de l'animal dans le chat :",
