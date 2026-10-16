@@ -1,0 +1,57 @@
+last_inventory_check: "2026-08-28"
+last_upgrade_check: "2026-08-23"
+installed:
+  - name: python3
+    type: cli
+    version: "3.12.3"
+    purpose: Runtime для скриптов и окружения
+    verified: true
+    installed_at: "2026-08-28"
+  - name: uv
+    type: cli
+    version: "0.12.5"
+    purpose: Пакетный менеджер Python для бота
+    verified: true
+    installed_at: "2026-08-28"
+  - name: ruff
+    type: cli
+    version: "0.16.4"
+    purpose: Линтер и форматтер Python
+    verified: true
+    installed_at: "2026-08-28"
+  - name: node
+    type: cli
+    version: "22.22.2"
+    purpose: Node.js runtime (LTS)
+    verified: true
+    installed_at: "2026-08-28"
+  - name: git
+    type: cli
+    version: "2.43.0"
+    purpose: VCS монорепозитория
+    verified: true
+    installed_at: "2026-08-28"
+  - name: gh
+    type: cli
+    version: "2.98.0"
+    purpose: GitHub CLI
+    verified: true
+    installed_at: "2026-08-28"
+  - name: podman
+    type: cli
+    version: "4.9.3"
+    purpose: Runtime контейнеров (bot + odoo + db + redis)
+    verified: true
+    installed_at: "2026-08-28"
+  - name: promptfoo
+    type: cli
+    version: "0.122.0"
+    purpose: LLM eval & prompt testing
+    verified: true
+    installed_at: "2026-08-28"
+  - name: tool-discovery
+    type: skill
+    version: "1.0.0"
+    purpose: Протокол поиска MCP/CLI инструментов и защита от slopsquatting
+    verified: true
+    installed_at: "2026-08-28"

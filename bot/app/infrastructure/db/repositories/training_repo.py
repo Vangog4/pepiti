@@ -11,6 +11,20 @@ class TrainingPlanRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
+    async def get_active_plan(self, pet_id: int) -> TrainingPlanModel | None:
+        """Latest active plan for the pet (week or daily)."""
+        result = await self.session.execute(
+            select(TrainingPlanModel)
+            .where(
+                TrainingPlanModel.pet_id == pet_id,
+                TrainingPlanModel.is_active == True,
+            )
+            .options(selectinload(TrainingPlanModel.tasks))
+            .order_by(TrainingPlanModel.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
     async def get_active_today(self, pet_id: int) -> TrainingPlanModel | None:
         result = await self.session.execute(
             select(TrainingPlanModel)

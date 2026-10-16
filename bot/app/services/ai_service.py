@@ -1,12 +1,27 @@
 import json
+import logging
 import re
+from typing import Any, TypeVar
 
 from google import genai
 from google.genai import types
+from pydantic import BaseModel, ValidationError
 
 from app.infrastructure.db.models.pet import PetModel
+from app.infrastructure.redis.metrics import BotMetrics
+from app.logic.cascade import ModelCascade
+from app.logic.rules import contains_forbidden, get_rules, rule
+from app.logic.schemas import (
+    PetProfileSchema,
+    TrainingIntentSchema,
+    TrainingPlanSchema,
+    WeekPlanSchema,
+)
+from app.logic.trace import ai_trace
 
-_MODEL = "gemini-2.5-flash-lite"
+logger = logging.getLogger("pepito.ai")
+
+T = TypeVar("T", bound=BaseModel)
 
 _HTML_RULE = (
     "IMPORTANT: use only Telegram HTML tags: "
@@ -27,6 +42,101 @@ _LANG_NAMES: dict[str, str] = {
 def _lang_instruction(lang: str) -> str:
     name = _LANG_NAMES.get(lang, "Russian (русский)")
     return f"\n\nIMPORTANT: Respond strictly in {name}."
+
+
+def _coach_format(lang: str) -> str:
+    """Section headers must match reply language (QA: EN headers leaked into RU)."""
+    formats = {
+        "en": (
+            "🎯 <b>Main cause:</b> [1 sentence]\n\n"
+            "🛠 <b>What to do (3 steps):</b>\n"
+            "1. [Step 1]\n"
+            "2. [Step 2]\n"
+            "3. [Step 3]\n\n"
+            "🚫 <b>What NOT to do:</b> [1 mistake]\n\n"
+        ),
+        "de": (
+            "🎯 <b>Hauptursache:</b> [1 Satz]\n\n"
+            "🛠 <b>Was tun (3 Schritte):</b>\n"
+            "1. [Schritt 1]\n"
+            "2. [Schritt 2]\n"
+            "3. [Schritt 3]\n\n"
+            "🚫 <b>Nicht tun:</b> [1 Fehler]\n\n"
+        ),
+        "fr": (
+            "🎯 <b>Cause principale :</b> [1 phrase]\n\n"
+            "🛠 <b>Que faire (3 étapes) :</b>\n"
+            "1. [Étape 1]\n"
+            "2. [Étape 2]\n"
+            "3. [Étape 3]\n\n"
+            "🚫 <b>À ne pas faire :</b> [1 erreur]\n\n"
+        ),
+        "es": (
+            "🎯 <b>Causa principal:</b> [1 frase]\n\n"
+            "🛠 <b>Qué hacer (3 pasos):</b>\n"
+            "1. [Paso 1]\n"
+            "2. [Paso 2]\n"
+            "3. [Paso 3]\n\n"
+            "🚫 <b>Qué NO hacer:</b> [1 error]\n\n"
+        ),
+        "pt": (
+            "🎯 <b>Causa principal:</b> [1 frase]\n\n"
+            "🛠 <b>O que fazer (3 passos):</b>\n"
+            "1. [Passo 1]\n"
+            "2. [Passo 2]\n"
+            "3. [Passo 3]\n\n"
+            "🚫 <b>O que NÃO fazer:</b> [1 erro]\n\n"
+        ),
+        "ru": (
+            "🎯 <b>Главная причина:</b> [1 предложение]\n\n"
+            "🛠 <b>Что делать (3 шага):</b>\n"
+            "1. [Шаг 1]\n"
+            "2. [Шаг 2]\n"
+            "3. [Шаг 3]\n\n"
+            "🚫 <b>Чего НЕ делать:</b> [1 ошибка]\n\n"
+        ),
+    }
+    return formats.get(lang, formats["ru"])
+
+
+def _explain_format(lang: str) -> str:
+    if lang == "en":
+        return (
+            "🎯 <b>Goal:</b> [1-2 sentences]\n\n"
+            "📋 <b>Step-by-step technique:</b>\n"
+            "1. [detailed step]\n"
+            "2. [detailed step]\n"
+            "3. [detailed step]\n\n"
+            "💡 <b>Tips:</b> [1-2 practical tips]\n\n"
+            "⚠️ <b>Common mistakes:</b> [1 main mistake]\n\n"
+        )
+    return (
+        "🎯 <b>Цель:</b> [1-2 предложения]\n\n"
+        "📋 <b>Техника по шагам:</b>\n"
+        "1. [подробный шаг]\n"
+        "2. [подробный шаг]\n"
+        "3. [подробный шаг]\n\n"
+        "💡 <b>Советы:</b> [1-2 практических совета]\n\n"
+        "⚠️ <b>Частые ошибки:</b> [1 главная ошибка]\n\n"
+    )
+
+
+def _media_format(lang: str) -> str:
+    if lang == "en":
+        return (
+            "🎯 <b>What I see:</b> [1-2 sentences about behavior/technique]\n"
+            "✅ <b>Doing right:</b> [1 point]\n"
+            "🛠 <b>To improve:</b>\n"
+            "1. [specific step]\n"
+            "2. [specific step]\n\n"
+        )
+    return (
+        "🎯 <b>Что вижу:</b> [1-2 предложения о поведении/технике]\n"
+        "✅ <b>Что уже хорошо:</b> [1 пункт]\n"
+        "🛠 <b>Как улучшить:</b>\n"
+        "1. [конкретный шаг]\n"
+        "2. [конкретный шаг]\n\n"
+    )
 
 
 _FALLBACK_PLAN_RU = {
@@ -151,8 +261,12 @@ def _has_unclosed_tags(text: str) -> bool:
     return bool(stack)
 
 
+def _json_config() -> types.GenerateContentConfig:
+    return types.GenerateContentConfig(response_mime_type="application/json")
+
+
 class AiService:
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, metrics: BotMetrics | None = None):
         self.client = genai.Client(
             api_key=api_key,
             http_options=types.HttpOptions(
@@ -164,6 +278,162 @@ class AiService:
                 timeout=30 * 1000,
             ),
         )
+        self._cascade = ModelCascade(get_rules().get("ai", {}))
+        self._metrics = metrics
+
+    def _get_cascade(self) -> ModelCascade:
+        """Lazy cascade — unit tests often build AiService via ``__new__``."""
+        cascade = getattr(self, "_cascade", None)
+        if cascade is None:
+            cascade = ModelCascade(get_rules().get("ai", {}))
+            self._cascade = cascade
+        return cascade
+
+    async def _metric(self, key: str) -> None:
+        m = getattr(self, "_metrics", None)
+        if m is None:
+            return
+        try:
+            await m.inc(key)
+        except Exception:
+            logger.debug("metric inc failed: %s", key, exc_info=True)
+
+    # ── low-level generate helpers ───────────────────────────────────────────
+
+    async def _call_model(
+        self,
+        *,
+        kind: str,
+        model: str,
+        contents: Any,
+        attempt: int = 0,
+        config: types.GenerateContentConfig | None = None,
+        trace: bool = True,
+    ) -> str:
+        kwargs: dict[str, Any] = {"model": model, "contents": contents}
+        if config is not None:
+            kwargs["config"] = config
+
+        if not trace:
+            return (await self.client.aio.models.generate_content(**kwargs)).text or ""
+
+        with ai_trace(kind, model, attempt=attempt) as tr:
+            try:
+                raw = (await self.client.aio.models.generate_content(**kwargs)).text or ""
+                tr.ok()
+                await self._metric(BotMetrics.AI_CALLS)
+                return raw
+            except Exception as e:
+                tr.fail(e)
+                raise
+
+    async def _generate_text(self, *, kind: str, contents: Any) -> str:
+        model = self._get_cascade().model_for(kind)
+        return await self._call_model(kind=kind, model=model, contents=contents)
+
+    async def _generate_structured(
+        self,
+        *,
+        kind: str,
+        contents: Any,
+        schema: type[T],
+        parse_loose: Any | None = None,
+    ) -> T | None:
+        """Call model ladder until pydantic schema validates. Returns None on total fail."""
+        last_err: Exception | None = None
+        for attempt, model in enumerate(self._get_cascade().ladder_for(kind)):
+            if attempt > 0:
+                await self._metric(BotMetrics.AI_ESCALATE)
+            with ai_trace(kind, model, attempt=attempt) as tr:
+                try:
+                    raw = await self._call_model(
+                        kind=kind,
+                        model=model,
+                        contents=contents,
+                        attempt=attempt,
+                        config=_json_config(),
+                        trace=False,
+                    )
+                    await self._metric(BotMetrics.AI_CALLS)
+                    data = None
+                    if parse_loose is not None:
+                        data = parse_loose(raw)
+                    if data is None:
+                        data = self._loads_json(raw)
+                    if data is None:
+                        raise ValueError("unparseable JSON")
+                    validated = schema.model_validate(data)
+                    tr.ok(schema_ok=True)
+                    await self._metric(BotMetrics.AI_SCHEMA_OK)
+                    return validated
+                except (ValidationError, ValueError, TypeError, json.JSONDecodeError) as e:
+                    last_err = e
+                    tr.fail(e, schema_ok=False)
+                    await self._metric(BotMetrics.AI_SCHEMA_FAIL)
+                    logger.info(
+                        "schema reject kind=%s model=%s attempt=%s err=%s",
+                        kind,
+                        model,
+                        attempt,
+                        e,
+                    )
+                except Exception as e:
+                    last_err = e
+                    tr.fail(e)
+                    logger.warning("generate fail kind=%s model=%s: %s", kind, model, e)
+        if last_err:
+            logger.warning("structured generate exhausted kind=%s: %s", kind, last_err)
+        await self._metric(BotMetrics.AI_FALLBACK)
+        return None
+
+    @staticmethod
+    def _loads_json(text: str) -> dict | None:
+        text = (text or "").strip()
+        text = re.sub(r"^```[a-z]*\n?", "", text)
+        text = re.sub(r"\n?```$", "", text)
+        try:
+            data = json.loads(text)
+            return data if isinstance(data, dict) else None
+        except (json.JSONDecodeError, ValueError):
+            pass
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            try:
+                data = json.loads(match.group())
+                return data if isinstance(data, dict) else None
+            except (json.JSONDecodeError, ValueError):
+                pass
+        return None
+
+    def _guard_html(self, text: str, kind: str | None = None) -> str:
+        """Postprocess + soft policy check + optional length cap from rules."""
+        out = self._postprocess(text)
+        hit = contains_forbidden(out)
+        if hit:
+            logger.warning("forbidden phrase in AI output: %s", hit)
+            # fire-and-forget metric when event loop is running (handlers always are)
+            try:
+                import asyncio
+
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._metric(BotMetrics.AI_FORBIDDEN))
+            except RuntimeError:
+                pass
+            out = re.sub(
+                rf"[^.!?\n]*{re.escape(hit)}[^.!?\n]*[.!?]?",
+                "",
+                out,
+                flags=re.IGNORECASE,
+            )
+            out = re.sub(r"\n{3,}", "\n\n", out).strip()
+        if kind:
+            caps = rule("ai.max_html_chars", {}) or {}
+            cap = caps.get(kind)
+            if isinstance(cap, int) and cap > 0 and len(out) > cap:
+                out = out[: cap - 1].rstrip() + "…"
+        return out
+
+    # ── public API ───────────────────────────────────────────────────────────
 
     async def generate_training_plan(self, pet: PetModel, lang: str = "ru") -> dict:
         breed = pet.breed or "порода неизвестна"
@@ -202,13 +472,15 @@ class AiService:
             + _lang_instruction(lang)
         )
 
-        try:
-            raw = (
-                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
-            ).text
-            return self._parse_json(raw) or _get_fallback_plan(lang)
-        except Exception:
-            return _get_fallback_plan(lang)
+        validated = await self._generate_structured(
+            kind="training_plan",
+            contents=prompt,
+            schema=TrainingPlanSchema,
+            parse_loose=self._parse_json,
+        )
+        if validated is not None:
+            return validated.model_dump()
+        return _get_fallback_plan(lang)
 
     async def generate_week_plan(self, pet: PetModel, lang: str = "ru") -> dict:
         breed = pet.breed or "порода неизвестна"
@@ -241,37 +513,30 @@ class AiService:
             + _lang_instruction(lang)
         )
 
-        try:
-            raw = (
-                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
-            ).text
-            data = self._parse_week_json(raw)
-            return data if data else _get_fallback_week_plan(lang)
-        except Exception:
-            return _get_fallback_week_plan(lang)
+        validated = await self._generate_structured(
+            kind="week_plan",
+            contents=prompt,
+            schema=WeekPlanSchema,
+            parse_loose=self._parse_week_json,
+        )
+        if validated is not None:
+            return validated.model_dump()
+        return _get_fallback_week_plan(lang)
 
     async def explain_exercise(self, title: str, description: str, lang: str = "ru") -> str:
         prompt = (
             f"You are a professional dog trainer. Explain the following exercise in detail.\n\n"
             f"Exercise: {title}\n"
             f"Short description: {description}\n\n"
-            "Provide a detailed explanation:\n"
-            "🎯 <b>Goal:</b> [1-2 sentences]\n\n"
-            "📋 <b>Step-by-step technique:</b>\n"
-            "1. [detailed step]\n"
-            "2. [detailed step]\n"
-            "3. [detailed step]\n\n"
-            "💡 <b>Tips:</b> [1-2 practical tips]\n\n"
-            "⚠️ <b>Common mistakes:</b> [1 main mistake]\n\n"
+            "Provide a detailed explanation in this format:\n"
+            + _explain_format(lang)
             + _HTML_RULE
-            + "\nMax 900 characters."
+            + "\nMax 900 characters. Section headers must be in the reply language."
             + _lang_instruction(lang)
         )
         try:
-            raw = (
-                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
-            ).text or ""
-            return self._postprocess(raw)
+            raw = await self._generate_text(kind="explain_exercise", contents=prompt)
+            return self._guard_html(raw, kind="explain_exercise")
         except Exception as e:
             return f"⚠️ Explanation unavailable. Try again later.\n<i>{e}</i>"
 
@@ -300,14 +565,10 @@ class AiService:
             + (f" Caption: {caption}" if caption else "")
             + ("\nConversation history:\n" + history + "\n" if history else "")
             + f"\nAnalyze the {media_word} and give specific training advice.\n\n"
-            "🎯 <b>What I see:</b> [1-2 sentences about behavior/technique]\n"
-            "✅ <b>Doing right:</b> [1 point]\n"
-            "🛠 <b>To improve:</b>\n"
-            "1. [specific step]\n"
-            "2. [specific step]\n\n"
+            + _media_format(lang)
             + _HTML_RULE
-            + "\nMax 900 characters. Do not give veterinary diagnoses."
-            + _lang_instruction(lang)
+            + "\nMax 900 characters. Do not give veterinary diagnoses. "
+            "Section headers must be in the reply language." + _lang_instruction(lang)
         )
 
         contents = [
@@ -315,10 +576,8 @@ class AiService:
             types.Part.from_text(prompt),
         ]
         try:
-            raw = (
-                await self.client.aio.models.generate_content(model=_MODEL, contents=contents)
-            ).text or ""
-            return self._postprocess(raw)
+            raw = await self._generate_text(kind="media_analysis", contents=contents)
+            return self._guard_html(raw, kind="media_analysis")
         except Exception as e:
             return f"⚠️ Media analysis unavailable. Try again.\n<i>{e}</i>"
 
@@ -331,23 +590,21 @@ class AiService:
             f"You are a professional dog behaviourist and trainer. Consulting about:\n"
             f"<b>{pet.name}</b> — {breed}, {age}. Owner's goal: {goal}.\n\n"
             f"CONVERSATION HISTORY:\n{history}\n\n"
-            "Evaluate the last question. If clarification is needed — ask EXACTLY ONE short question.\n"
-            "If you have enough information — answer strictly in this format:\n\n"
-            "🎯 <b>Main cause:</b> [1 sentence]\n\n"
-            "🛠 <b>What to do (3 steps):</b>\n"
-            "1. [Step 1]\n"
-            "2. [Step 2]\n"
-            "3. [Step 3]\n\n"
-            "🚫 <b>What NOT to do:</b> [1 mistake]\n\n"
+            "DEFAULT: answer in the structured format below. "
+            "If a detail is missing, assume a typical case and state the assumption in one short clause "
+            "(e.g. leash pulling → assume forward pulling on walks).\n"
+            "Do NOT open with a clarifying question when you can give useful training steps.\n"
+            "Ask EXACTLY ONE short question INSTEAD of the format only if the last message is empty, "
+            "unreadable, or clearly not about dog training.\n\n"
+            + _coach_format(lang)
             + _HTML_RULE
-            + "\nMax 1200 characters."
+            + "\nMax 1200 characters. Never invent veterinary diagnoses. "
+            "Section headers must be in the reply language (no English headers in Russian answers)."
             + _lang_instruction(lang)
         )
         try:
-            raw = (
-                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
-            ).text or ""
-            return self._postprocess(raw)
+            raw = await self._generate_text(kind="coach_answer", contents=prompt)
+            return self._guard_html(raw, kind="coach_answer")
         except Exception as e:
             return f"⚠️ Trainer is busy. Try again later.\n<i>{e}</i>"
 
@@ -372,10 +629,8 @@ class AiService:
             + _lang_instruction(lang)
         )
         try:
-            raw = (
-                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
-            ).text or ""
-            return self._postprocess(raw)
+            raw = await self._generate_text(kind="progress_summary", contents=prompt)
+            return self._guard_html(raw, kind="progress_summary")
         except Exception as e:
             return f"⚠️ Analysis unavailable. Try later.\n<i>{e}</i>"
 
@@ -405,14 +660,12 @@ class AiService:
             "⚠️ <b>Risks and limitations:</b> [1 point considering breed/health]\n\n"
             "💡 <b>Expert tip:</b> [1 non-obvious advice]\n\n"
             + _HTML_RULE
-            + "\nMax 1400 characters."
+            + "\nMax 1400 characters. Do not give veterinary diagnoses."
             + _lang_instruction(lang)
         )
         try:
-            raw = (
-                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
-            ).text or ""
-            return self._postprocess(raw)
+            raw = await self._generate_text(kind="premium_deep", contents=prompt)
+            return self._guard_html(raw, kind="premium_deep")
         except Exception as e:
             return f"⚠️ Deep analysis unavailable. Try later.\n<i>{e}</i>"
 
@@ -495,15 +748,14 @@ class AiService:
         else:
             contents = prompt + f"User message: {text or ''}"
 
-        try:
-            raw = (
-                await self.client.aio.models.generate_content(model=_MODEL, contents=contents)
-            ).text or ""
-            parsed = self._parse_profile_json(raw)
-            if parsed is not None:
-                return parsed
-        except Exception:
-            pass
+        validated = await self._generate_structured(
+            kind="extract_profile",
+            contents=contents,
+            schema=PetProfileSchema,
+            parse_loose=self._parse_profile_json,
+        )
+        if validated is not None:
+            return validated.model_dump()
 
         # Safe fallback — preserve any partial, flag all core fields as missing
         result: dict = dict(partial or {})
@@ -578,17 +830,38 @@ class AiService:
         else:
             contents = prompt + (f"\n\nСообщение: {text}" if text else "")
 
-        try:
-            raw = (
-                await self.client.aio.models.generate_content(model=_MODEL, contents=contents)
-            ).text or ""
-        except Exception:
-            return {"action": "none", "message": "⚠️ Не удалось обработать. Попробуй ещё раз."}
+        validated = await self._generate_structured(
+            kind="training_intent",
+            contents=contents,
+            schema=TrainingIntentSchema,
+            parse_loose=self._parse_intent_json,
+        )
+        if validated is not None:
+            data = validated.model_dump()
+            if data.get("message"):
+                data["message"] = self._guard_html(str(data["message"]), kind="training_intent")
+            return data
 
-        parsed = self._parse_intent_json(raw)
-        if parsed:
-            return parsed
-        return {"action": "none", "message": raw[:800], "_is_fallback": True}
+        # Last resort: raw text as coach message (legacy path)
+        try:
+            raw = await self._generate_text(kind="training_intent", contents=contents)
+            parsed = self._parse_intent_json(raw)
+            if parsed:
+                if parsed.get("message"):
+                    parsed["message"] = self._guard_html(
+                        str(parsed["message"]), kind="training_intent"
+                    )
+                return parsed
+            return {
+                "action": "none",
+                "message": self._guard_html(raw[:800], kind="training_intent"),
+                "_is_fallback": True,
+            }
+        except Exception:
+            return {
+                "action": "none",
+                "message": "⚠️ Не удалось обработать. Попробуй ещё раз.",
+            }
 
     @staticmethod
     def _parse_profile_json(text: str) -> dict | None:
@@ -739,9 +1012,8 @@ class AiService:
             "Верни ТОЛЬКО название, без кавычек, без пояснений."
         )
         try:
-            return (
-                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
-            ).text.strip()[:60]
+            raw = await self._generate_text(kind="thread_title", contents=prompt)
+            return raw.strip()[:60]
         except Exception:
             return ""
 
@@ -760,8 +1032,7 @@ class AiService:
             "Резюме (только текст, без заголовков):"
         )
         try:
-            return (
-                await self.client.aio.models.generate_content(model=_MODEL, contents=prompt)
-            ).text.strip()[:800]
+            raw = await self._generate_text(kind="thread_summary", contents=prompt)
+            return raw.strip()[:800]
         except Exception:
             return existing_summary or ""

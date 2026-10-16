@@ -5,6 +5,7 @@ Root cause of original bug:
   was swallowed by aiogram → state remained None (default_state) → handle_voice_action
   intercepted the next message → found no pet → silent exit.
 """
+
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch, call
 
@@ -16,6 +17,7 @@ from app.bot.states.onboarding import OnboardingStates
 
 
 # ── 1. State attribute guard ─────────────────────────────────────────────────
+
 
 def test_onboarding_states_has_collecting():
     """OnboardingStates.collecting must exist — it is the entry point for onboarding."""
@@ -32,6 +34,7 @@ def test_onboarding_states_has_no_pet_name():
 
 
 # ── 2. Handler calls set_state with the correct state ────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_reset_sets_collecting_state():

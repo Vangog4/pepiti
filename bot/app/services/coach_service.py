@@ -5,13 +5,15 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.i18n.core import t
 from app.infrastructure.db.models.coach_thread import CoachThreadModel
 from app.infrastructure.db.repositories.coach_thread_repo import CoachThreadRepository
+from app.logic.rules import rule
 
 
 class CoachService:
-    CONTEXT_MESSAGES_FREE = 10  # 5 exchanges
-    CONTEXT_MESSAGES_PREMIUM = 20  # 10 exchanges
-    MAX_STORED_MESSAGES = 40  # 20 exchanges
-    SUMMARY_EVERY = 10  # refresh summary every 10th exchange
+    # Defaults from rules.json (class attrs kept for tests / back-compat)
+    CONTEXT_MESSAGES_FREE = int(rule("coach.context_messages_free", 10))
+    CONTEXT_MESSAGES_PREMIUM = int(rule("coach.context_messages_premium", 20))
+    MAX_STORED_MESSAGES = int(rule("coach.max_stored_messages", 40))
+    SUMMARY_EVERY = int(rule("coach.summary_every", 10))
 
     def __init__(self, repo: CoachThreadRepository):
         self.repo = repo

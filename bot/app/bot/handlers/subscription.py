@@ -16,6 +16,20 @@ logger = logging.getLogger(__name__)
 router = Router(name="subscription_router")
 
 
+async def send_premium_invoice(target: types.Message, lang: str) -> None:
+    """Send Stars invoice. Used by bot button and WebApp deep-link /start premium."""
+    await target.answer_invoice(
+        title=t("premium.invoice.title", lang),
+        description=t("premium.invoice.description", lang),
+        payload="premium_1m",
+        provider_token="",  # empty string = Telegram Stars (XTR)
+        currency="XTR",
+        prices=[
+            types.LabeledPrice(label=t("premium.invoice.label", lang), amount=PREMIUM_1M_STARS)
+        ],
+    )
+
+
 @router.callback_query(F.data == "menu_premium")
 @inject
 async def show_premium(
@@ -69,20 +83,18 @@ async def send_invoice(
     await cb.answer()
     usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
     lang = normalize_locale(usr.language_code)
-    await cb.message.answer_invoice(
-        title=t("premium.invoice.title", lang),
-        description=t("premium.invoice.description", lang),
-        payload="premium_1m",
-        provider_token="",  # пустая строка для Telegram Stars (XTR)
-        currency="XTR",
-        prices=[
-            types.LabeledPrice(label=t("premium.invoice.label", lang), amount=PREMIUM_1M_STARS)
-        ],
-    )
+    await send_premium_invoice(cb.message, lang)
 
 
 @router.pre_checkout_query()
 async def pre_checkout(pcq: types.PreCheckoutQuery) -> None:
+    # Only accept known premium invoice payloads
+    if pcq.invoice_payload != "premium_1m":
+        await pcq.answer(ok=False, error_message="Unknown product")
+        return
+    if pcq.currency != "XTR":
+        await pcq.answer(ok=False, error_message="Invalid currency")
+        return
     await pcq.answer(ok=True)
 
 
@@ -94,6 +106,14 @@ async def successful_payment(
     sub_svc: SubscriptionService = Provide[AppContainer.subscription_service],
 ) -> None:
     payment = msg.successful_payment
+    if payment.invoice_payload != "premium_1m":
+        logger.warning(
+            "Ignoring successful_payment with payload=%s user=%s",
+            payment.invoice_payload,
+            msg.from_user.id,
+        )
+        return
+
     usr = await u_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
     await sub_svc.activate(
         user_id=usr.id,
@@ -124,13 +144,23 @@ async def refunded_payment(
         return
 
     sub.status = "refunded"
-    await sub_repo.session.execute(
-        update(UserModel)
-        .where(UserModel.id == sub.user_id)
-        .values(is_premium=False, subscription_expires_at=None)
-    )
+    await sub_repo.session.flush()
+    # Keep premium if another valid active sub remains (referral stack, etc.)
+    still = await sub_repo.get_active(sub.user_id)
+    if still:
+        await sub_repo.session.execute(
+            update(UserModel)
+            .where(UserModel.id == sub.user_id)
+            .values(is_premium=True, subscription_expires_at=still.expires_at)
+        )
+    else:
+        await sub_repo.session.execute(
+            update(UserModel)
+            .where(UserModel.id == sub.user_id)
+            .values(is_premium=False, subscription_expires_at=None)
+        )
     await sub_repo.session.commit()
 
-    logger.info("Premium revoked for user_id=%s due to refund", sub.user_id)
+    logger.info("Premium recalculated for user_id=%s after refund", sub.user_id)
     lang = normalize_locale(msg.from_user.language_code)
     await msg.answer(t("premium.refunded", lang), parse_mode="HTML")

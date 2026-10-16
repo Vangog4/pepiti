@@ -1,0 +1,143 @@
+# Promptfoo eval — Pepito AI coach / plan quality
+# Offline-friendly assertions on structure; live provider optional via GEMINI_API_KEY.
+#
+# Run (if promptfoo installed):
+#   cd /root/pepito/bot/eval && promptfoo eval
+#   promptfoo view
+#
+# Without promptfoo: unit tests in tests/unit/test_logic_layer.py cover contracts.
+
+description: "Pepito — качество ответов кинолога и JSON-планов"
+
+providers:
+  - id: google:gemini-2.0-flash
+    config:
+      apiKey: ${GEMINI_API_KEY}
+
+prompts:
+  - id: coach_answer
+    label: "Coach HTML answer"
+    raw: |
+      You are a professional dog behaviourist and trainer. Consulting about:
+      <b>{{pet_name}}</b> — {{breed}}, {{age}}. Owner's goal: {{goal}}.
+
+      CONVERSATION HISTORY:
+      Owner: {{question}}
+
+      If you have enough information — answer strictly in this format:
+
+      🎯 <b>Main cause:</b> [1 sentence]
+
+      🛠 <b>What to do (3 steps):</b>
+      1. [Step 1]
+      2. [Step 2]
+      3. [Step 3]
+
+      🚫 <b>What NOT to do:</b> [1 mistake]
+
+      IMPORTANT: use only Telegram HTML tags: <b>bold</b>, <i>italic</i>.
+      Max 1200 characters. Never invent veterinary diagnoses.
+      Respond strictly in Russian (русский).
+
+  - id: training_plan_json
+    label: "Daily plan JSON"
+    raw: |
+      Ты кинолог-тренер. Составь план тренировки на сегодня для собаки.
+
+      Питомец: {{pet_name}} ({{breed}}, {{age}}, уровень 3/5).
+      Цель: {{goal}}. Проблемы: {{issues}}.
+
+      Верни ТОЛЬКО валидный JSON (без markdown):
+      {
+        "title": "...",
+        "goal": "...",
+        "tasks": [
+          {"title": "...", "description": "шаг 1\\nшаг 2", "duration_minutes": 5, "difficulty": "easy"},
+          {"title": "...", "description": "шаг 1\\nшаг 2", "duration_minutes": 8, "difficulty": "medium"}
+        ],
+        "tip": "..."
+      }
+      difficulty: easy, medium или hard. Ровно 2 упражнения.
+      Respond strictly in Russian (русский).
+
+tests:
+  - description: "Тянет поводок — структурированный ответ"
+    vars:
+      pet_name: Чарли
+      breed: Бигль
+      age: "Молодой (1–3 года)"
+      goal: "Не тянуть поводок"
+      question: "Собака всегда тянет на прогулке, что делать?"
+    assert:
+      - type: contains
+        value: "🎯"
+      - type: contains
+        value: "🛠"
+      - type: not-contains
+        value: "ветеринарный диагноз"
+      - type: javascript
+        value: "output.length <= 1400"
+
+  - description: "Лает на гостей — без markdown **"
+    vars:
+      pet_name: Рекс
+      breed: Овчарка
+      age: "Взрослый (3–7 лет)"
+      goal: "Спокойствие дома"
+      question: "Лает на каждого гостя, как отучить?"
+    assert:
+      - type: not-contains
+        value: "**"
+      - type: contains-any
+        value: ["<b>", "🎯"]
+
+  - description: "План JSON — два упражнения"
+    vars:
+      pet_name: Луна
+      breed: Корги
+      age: "Щенок (4–12 мес)"
+      goal: "Сидеть и ждать"
+      issues: "не слушается"
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          const o = JSON.parse(output.replace(/```json|```/g, '').trim());
+          return Array.isArray(o.tasks) && o.tasks.length >= 1 && o.tasks.length <= 5 && !!o.title;
+
+  - description: "Сепарационная тревога — русский + HTML, без диагноза"
+    vars:
+      pet_name: Бася
+      breed: Шпиц
+      age: "Молодой (1–3 года)"
+      goal: "Спокойствие в одиночестве"
+      question: "Воет и грызёт мебель когда ухожу на работу, это сепарационная тревога?"
+    assert:
+      - type: contains
+        value: "🎯"
+      - type: contains
+        value: "🛠"
+      - type: not-contains
+        value: "**"
+      - type: javascript
+        value: "output.length <= 1400"
+      - type: llm-rubric
+        value: "Ответ на русском, без выдуманного ветдиагноза, даёт практические шаги владельцу"
+
+  - description: "План JSON — difficulty enum"
+    vars:
+      pet_name: Макс
+      breed: Лабрадор
+      age: "Взрослый (3–7 лет)"
+      goal: "Аппортировка"
+      issues: "бросает игрушку по пути"
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          const raw = output.replace(/```json|```/g, '').trim();
+          const o = JSON.parse(raw);
+          if (!Array.isArray(o.tasks) || o.tasks.length < 1) return false;
+          const okDiff = o.tasks.every(t => ['easy','medium','hard'].includes(t.difficulty));
+          const okDur = o.tasks.every(t => typeof t.duration_minutes === 'number' && t.duration_minutes > 0);
+          return okDiff && okDur && !!o.title && !!o.tip;

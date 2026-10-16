@@ -2,6 +2,7 @@
 i18n coverage guard — catches missing keys and broken placeholders before merge.
 Run: pytest tests/unit/test_i18n_coverage.py -v
 """
+
 import re
 import sys
 
@@ -77,6 +78,8 @@ REQUIRED_KEYS = [
     "shop.title",
     "shop.body",
     "shop.cat.training.btn",
+    "shop.rec.puppy_named",
+    "shop.rec.training_free",
     "invite.title",
     "invite.link_label",
     "invite.bonus",
@@ -135,6 +138,7 @@ def test_no_positional_placeholders_in_ru():
 def test_t_resolves_known_keys():
     """t() must return the translation, not echo the key, for known ru keys."""
     from app.i18n import t
+
     ru = _load_locale("ru")
     for key in list(ru.keys())[:10]:
         result = t(key, "ru")
@@ -144,6 +148,7 @@ def test_t_resolves_known_keys():
 def test_t_fallback_unknown_locale():
     """t() must not raise for an unknown locale and must return the ru value."""
     from app.i18n import t
+
     ru = _load_locale("ru")
     result = t("menu.main.greeting", "xx_UNKNOWN_LOCALE")
     assert result == ru["menu.main.greeting"]

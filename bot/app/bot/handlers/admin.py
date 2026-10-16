@@ -15,6 +15,10 @@ from app.infrastructure.db.models.subscription import SubscriptionModel
 from app.infrastructure.db.repositories.user_repo import UserRepository
 from app.infrastructure.redis.admin_log import AdminLog
 from app.infrastructure.redis.ai_rate_limit import AiRateLimiter
+from app.infrastructure.redis.metrics import BotMetrics
+from app.logic.cascade import ModelCascade
+from app.logic.rules import rule
+from app.services.broadcast_service import run_broadcast
 
 logger = logging.getLogger(__name__)
 router = Router(name="admin_router")
@@ -32,6 +36,7 @@ def _admin_keyboard() -> types.InlineKeyboardMarkup:
         inline_keyboard=[
             [types.InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast")],
             [types.InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
+            [types.InlineKeyboardButton(text="🧠 AI logic", callback_data="admin_ai_stats")],
             [types.InlineKeyboardButton(text="🔗 Рефералы", callback_data="admin_ref_stats")],
         ]
     )
@@ -100,6 +105,40 @@ async def admin_referral_stats(
         lines.append("\nПока нет засчитанных рефералов.")
 
     await cb.message.edit_text("\n".join(lines), reply_markup=_admin_keyboard(), parse_mode="HTML")
+
+
+@router.callback_query(F.data == "admin_ai_stats")
+@inject
+async def admin_ai_stats(
+    cb: types.CallbackQuery,
+    metrics: BotMetrics = Provide[AppContainer.metrics],
+) -> None:
+    """Logic-layer counters + active model routing from rules.json."""
+    await cb.answer()
+    ai = await metrics.get_ai_stats()
+    cascade = ModelCascade()
+    default_m = cascade.default
+    escalate_m = cascade.escalate
+    free_limit = rule("ai.free_daily_limit", 5)
+    stars = rule("premium.stars_1m", 299)
+
+    text = (
+        "🧠 <b>AI logic layer</b>\n\n"
+        f"📞 Calls: <b>{ai['ai_calls']}</b>\n"
+        f"✅ Schema OK: <b>{ai['ai_schema_ok']}</b>  |  "
+        f"❌ Schema fail: <b>{ai['ai_schema_fail']}</b>\n"
+        f"📈 Schema OK rate: <b>{ai['schema_ok_rate_pct']}%</b>\n"
+        f"⬆ Escalate: <b>{ai['ai_escalate']}</b>  |  "
+        f"🛟 Fallback: <b>{ai['ai_fallback']}</b>\n"
+        f"🚫 Forbidden hits: <b>{ai['ai_forbidden']}</b>\n\n"
+        f"<b>Routing</b>\n"
+        f"default: <code>{default_m}</code>\n"
+        f"escalate/media/premium: <code>{escalate_m}</code>\n\n"
+        f"<b>Business rules</b>\n"
+        f"free AI/day: <b>{free_limit}</b>  |  Stars 1m: <b>{stars}</b>\n"
+        f"<i>Source: app/logic/rules.json</i>"
+    )
+    await cb.message.edit_text(text, reply_markup=_admin_keyboard(), parse_mode="HTML")
 
 
 @router.message(Command("grant_premium"))
@@ -386,25 +425,15 @@ async def broadcast_confirm(
     result = await user_repo.session.execute(q)
     users = result.scalars().all()
     target_label = {"bc_all": "всем", "bc_premium": "Premium", "bc_free": "Free"}[target]
+    telegram_ids = [u.telegram_id for u in users]
 
     await cb.message.edit_text(
-        f"⏳ Рассылка ({target_label}) запущена для {len(users)} пользователей..."
-    )
-
-    bot = cb.bot
-    sent = failed = 0
-    for user in users:
-        try:
-            await bot.send_message(chat_id=user.telegram_id, text=text, parse_mode="HTML")
-            sent += 1
-        except Exception as e:
-            logger.warning("Broadcast failed for %s: %s", user.telegram_id, e)
-            failed += 1
-        await asyncio.sleep(0.05)
-
-    await alog.log(cb.from_user.id, "broadcast", target_label, f"sent={sent} failed={failed}")
-    await cb.message.answer(
-        f"✅ Рассылка завершена ({target_label})\n\nОтправлено: <b>{sent}</b>\nОшибок: <b>{failed}</b>",
+        f"⏳ <b>Рассылка запущена в фоне</b> ({target_label})\n\n"
+        f"Получателей в очереди: <b>{len(telegram_ids)}</b>\n"
+        f"По завершении бот пришлёт итоговый отчёт.",
         reply_markup=_admin_keyboard(),
         parse_mode="HTML",
     )
+
+    await alog.log(cb.from_user.id, "broadcast", target_label, f"queued={len(telegram_ids)}")
+    asyncio.create_task(run_broadcast(cb.bot, telegram_ids, text, cb.from_user.id))

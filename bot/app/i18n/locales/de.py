@@ -221,6 +221,14 @@ STRINGS: dict[str, str] = {
     "shop.cat.longplay.btn": "🦴 Langzeit-Kauartikel",
     "shop.cat.by_size.btn": "🐶 Welpen & nach Größe",
     "shop.cat.all.btn": "🛒 Ganzer Shop",
+    "shop.rec.puppy_named": "🐶 Welpenleckerli — für {name}",
+    "shop.rec.small_named": "🐶 Leckerli für kleine Rassen — für {name}",
+    "shop.rec.puppy_small_free": "🐶 Leckerli für Welpen und kleine Hunde",
+    "shop.rec.longplay_named": "🎁 Langzeitkauartikel — Belohnung für {name}",
+    "shop.rec.longplay_free": "🦴 Langzeitkauartikel",
+    "shop.rec.exercise_named": "🦴 Trainingsleckerli für {name}s Übungen",
+    "shop.rec.training_named": "🦴 Trainingsleckerli für {name}",
+    "shop.rec.training_free": "🦴 Trainingsleckerli",
     # ── Invite / Referral ──────────────────────────────────────────────────────
     "invite.title": "🐾 <b>Freund einladen — Bonus für beide!</b>",
     "invite.link_label": "🔗 Dein Link:",
@@ -286,6 +294,15 @@ STRINGS: dict[str, str] = {
         "✔ Deine Rückerstattung wurde verarbeitet. Premium-Abonnement deaktiviert.\n"
         "Wenn das ein Fehler ist, wende dich bitte an den Support."
     ),
+    "webapp.validation.name_empty": "Name darf nicht leer sein",
+    "webapp.validation.name_long": "Name maximal 30 Zeichen",
+    "webapp.validation.breed_long": "Rasse maximal 40 Zeichen",
+    "webapp.validation.goal_long": "Ziel maximal 150 Zeichen",
+    "webapp.validation.level": "Ungültige Trainingsstufe",
+    "webapp.validation.age": "Ungültige Alterskategorie",
+    "webapp.validation.reminder": "Format: HH:MM, z.B. 09:30",
+    "webapp.validation.timezone": "Ungültige Zeitzone",
+    "webapp.validation.language": "Ungültige Sprache",
     # ── Reminders ─────────────────────────────────────────────────────────────
     "reminder.title": "⏰ <b>Erinnerungen</b>",
     "reminder.status.off": "🔕 <b>Aus</b>",

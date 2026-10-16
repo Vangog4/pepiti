@@ -21,10 +21,20 @@ logger = logging.getLogger(__name__)
 
 
 async def main() -> None:
+    import os
+
     import sentry_sdk
 
     if settings.SENTRY_DSN:
         sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.1, environment="production")
+
+    # Expose optional Langfuse keys to process env for app.logic.trace
+    if settings.LANGFUSE_PUBLIC_KEY:
+        os.environ.setdefault("LANGFUSE_PUBLIC_KEY", settings.LANGFUSE_PUBLIC_KEY)
+    if settings.LANGFUSE_SECRET_KEY:
+        os.environ.setdefault("LANGFUSE_SECRET_KEY", settings.LANGFUSE_SECRET_KEY)
+    if settings.LANGFUSE_HOST:
+        os.environ.setdefault("LANGFUSE_HOST", settings.LANGFUSE_HOST)
 
     container = AppContainer()
     logger.info("Starting bot...")

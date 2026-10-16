@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Clean robots.txt: HTTPS sitemap only, no dual blocks -->
+    <template id="robots_https" inherit_id="website.robots" name="Pepito robots HTTPS">
+        <xpath expr="//t[@t-translation='off']" position="replace">
+            <t t-translation="off">User-agent: *
+Allow: /
+Disallow: /web
+Disallow: /web/
+Disallow: /my
+Disallow: /my/
+Disallow: /odoo
+Disallow: /xmlrpc/
+Sitemap: https://pepitopet.ru/sitemap.xml
+</t>
+        </xpath>
+    </template>
+</odoo>

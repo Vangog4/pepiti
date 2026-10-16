@@ -10,16 +10,99 @@
 }
 
 /* ---------- Навигация ---------- */
+/* NO backdrop-filter on header — breaks mobile offcanvas (position:fixed). */
 #wrapwrap > header {
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     transition: background 0.3s ease;
+    position: relative;
+    z-index: 1030;
 }
 
 #wrapwrap > header .navbar {
     min-height: 96px !important;
     padding-top: 4px !important;
     padding-bottom: 4px !important;
+}
+
+/* Mobile menu: visible burger + working offcanvas drawer */
+@media (max-width: 991.98px) {
+    #wrapwrap > header .o_header_mobile.navbar {
+        min-height: 64px !important;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+    }
+
+    #wrapwrap > header .o_header_mobile .navbar-brand.logo img,
+    #wrapwrap > header .o_header_mobile .navbar-brand.logo span img {
+        height: 52px !important;
+        max-height: 52px !important;
+    }
+
+    #wrapwrap > header .o_header_mobile button[data-bs-toggle="offcanvas"] {
+        position: relative;
+        z-index: 1040;
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #wrapwrap > header .o_header_mobile .navbar-toggler-icon {
+        width: 1.6rem;
+        height: 1.6rem;
+        filter: invert(1) grayscale(1) brightness(2);
+        opacity: 1 !important;
+    }
+
+    #wrapwrap > header #top_menu_collapse_mobile.offcanvas {
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 1055 !important;
+        width: 85vw !important;
+        max-width: 400px !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        background-color: #fff !important;
+        visibility: hidden;
+        transform: translateX(100%);
+        transition: transform 0.3s ease, visibility 0.3s ease;
+        overflow-y: auto;
+        pointer-events: auto;
+    }
+
+    #wrapwrap > header #top_menu_collapse_mobile.offcanvas.show,
+    #wrapwrap > header #top_menu_collapse_mobile.offcanvas.showing {
+        visibility: visible !important;
+        transform: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    header.o_transformed_not_affixed #top_menu_collapse_mobile.show,
+    header.o_transformed_not_affixed #top_menu_collapse_mobile.showing {
+        display: flex !important;
+    }
+
+    body .offcanvas-backdrop {
+        z-index: 1050 !important;
+    }
+
+    #wrapwrap > header #top_menu_collapse_mobile .nav-link {
+        color: #1A0A00 !important;
+        font-weight: 700;
+    }
+
+    #wrapwrap > header #top_menu_collapse_mobile .nav-link.active,
+    #wrapwrap > header #top_menu_collapse_mobile .nav-link:hover {
+        color: #C8411A !important;
+    }
+
+    #wrapwrap > header #top_menu_collapse_mobile .btn-close {
+        filter: none;
+        opacity: 0.8;
+    }
 }
 
 /* ---------- Логотип ---------- */

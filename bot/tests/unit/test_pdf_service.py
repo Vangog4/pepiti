@@ -57,7 +57,23 @@ def test_unicode_pet_name(sample_tasks):
 
 
 def test_missing_optional_fields():
-    tasks = [{"day_of_week": None, "title": "Стоять", "description": None,
-               "duration_minutes": None, "difficulty": None, "is_completed": False}]
+    tasks = [
+        {
+            "day_of_week": None,
+            "title": "Стоять",
+            "description": None,
+            "duration_minutes": None,
+            "difficulty": None,
+            "is_completed": False,
+        }
+    ]
     result = generate_training_pdf("Шарик", "Тест", "", tasks)
     assert result[:4] == b"%PDF"
+
+
+@pytest.mark.parametrize("lang", ["en", "de", "fr", "es", "pt", "ru"])
+def test_multilingual_pdf(sample_tasks, lang):
+    result = generate_training_pdf("Buddy", "Plan", "Goal", sample_tasks, lang=lang)
+    assert isinstance(result, bytes)
+    assert result[:4] == b"%PDF"
+    assert len(result) > 1000

@@ -24,6 +24,14 @@ class Settings(BaseSettings):
 
     SENTRY_DSN: str = ""
 
+    # Optional LLM observability (app/logic/trace.py). Empty = log-only traces.
+    LANGFUSE_PUBLIC_KEY: str = ""
+    LANGFUSE_SECRET_KEY: str = ""
+    LANGFUSE_HOST: str = ""
+
+    MOBILE_JWT_SECRET: str = "change_me_in_production"
+    MOBILE_JWT_EXPIRE_DAYS: int = 30
+
     @field_validator("ADMIN_TELEGRAM_IDS", mode="before")
     @classmethod
     def parse_admin_ids(cls, v):

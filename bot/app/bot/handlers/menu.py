@@ -2,7 +2,7 @@ import asyncio
 import io
 import re
 import urllib.parse
-from datetime import date, datetime
+from datetime import datetime
 
 from aiogram import F, Router, types
 from aiogram.filters import Command, StateFilter
@@ -44,7 +44,11 @@ from app.services.referral_service import (
     milestone_label,
     milestone_reward,
 )
-from app.services.training_service import TrainingService
+from app.services.training_service import (
+    TrainingService,
+    iso_weekday,
+    tasks_for_today,
+)
 from app.services.user_service import UserService
 
 router = Router(name="menu_router")
@@ -245,7 +249,7 @@ async def show_training_plan(
         return
     text = TrainingService.format_plan(plan, lang)
     plan_done = plan.tasks and all(t.is_completed for t in plan.tasks)
-    shop = get_shop_button(pet, usr.is_premium, AFTER_COMPLETION) if plan_done else None
+    shop = get_shop_button(pet, usr.is_premium, AFTER_COMPLETION, lang=lang) if plan_done else None
     await cb.message.edit_text(
         text,
         reply_markup=get_task_keyboard(plan.tasks, shop_btn=shop, lang=lang),
@@ -393,7 +397,7 @@ async def toggle_task(
         share_url = "https://t.me/share/url?text=" + urllib.parse.quote(share_text)
         share_btn = types.InlineKeyboardButton(text=t("training.share.btn", lang), url=share_url)
 
-    shop = get_shop_button(pet, usr.is_premium, AFTER_COMPLETION) if plan_done else None
+    shop = get_shop_button(pet, usr.is_premium, AFTER_COMPLETION, lang=lang) if plan_done else None
     extra = [btn for btn in [share_btn, shop] if btn]
     await cb.message.edit_text(
         text,
@@ -1177,26 +1181,12 @@ async def toggle_week_task(
             await cb.answer()
         return
     lang = normalize_locale(usr.language_code)
-    task.is_completed = not task.is_completed
+    task, day_done = await t_svc.toggle_task(task_id, pet)
     if not answered:
         toast_key = (
             "training.task.toggle.done" if task.is_completed else "training.task.toggle.undone"
         )
         await cb.answer(t(toast_key, lang))
-    task.completed_at = (
-        datetime.now(datetime.UTC).replace(tzinfo=None) if task.is_completed else None
-    )
-    await t_svc.plan_repo.session.commit()
-
-    day_done = await t_svc.plan_repo.day_tasks_done(plan_id, day)
-    if day_done and task.is_completed:
-        plan_meta = await t_svc.plan_repo.get_plan(plan_id)
-        meta = plan_meta.plan_json or {}
-        day_key = f"counted_day_{day}"
-        if not meta.get(day_key):
-            pet.training_days = (pet.training_days or 0) + 1
-            plan_meta.plan_json = {**meta, day_key: date.today().isoformat()}
-            await t_svc.plan_repo.session.commit()
 
     result = await t_svc.plan_repo.session.execute(
         select(TrainingPlanModel)
@@ -1229,7 +1219,7 @@ async def toggle_week_task(
         )
 
     shop = (
-        get_shop_button(pet, usr.is_premium, AFTER_COMPLETION)
+        get_shop_button(pet, usr.is_premium, AFTER_COMPLETION, lang=lang)
         if (day_done and task.is_completed)
         else None
     )
@@ -1362,7 +1352,7 @@ async def explain_daily(
                     text=t("training.explain.back_daily.btn", lang), callback_data="menu_training"
                 )
             ],
-            *([[get_shop_button(pet, usr.is_premium, AFTER_EXERCISE)]] if pet else []),
+            *([[get_shop_button(pet, usr.is_premium, AFTER_EXERCISE, lang=lang)]] if pet else []),
         ]
     )
     await cb.message.edit_text(explanation, reply_markup=kb, parse_mode="HTML")
@@ -1416,7 +1406,7 @@ async def explain_weekly(
                     callback_data=f"week_day:{plan_id}:{day}",
                 )
             ],
-            *([[get_shop_button(pet, usr.is_premium, AFTER_EXERCISE)]] if pet else []),
+            *([[get_shop_button(pet, usr.is_premium, AFTER_EXERCISE, lang=lang)]] if pet else []),
         ]
     )
     await cb.message.edit_text(explanation, reply_markup=kb, parse_mode="HTML")
@@ -1843,8 +1833,9 @@ async def handle_voice_action(
             return
 
     # Load today's task titles for AI context
-    today_plan = await t_svc.plan_repo.get_active_today(pet.id)
-    task_titles = [tk.title for tk in (today_plan.tasks if today_plan else [])]
+    active_plan = await t_svc.plan_repo.get_active_plan(pet.id)
+    today_tasks = tasks_for_today(active_plan)
+    task_titles = [tk.title for tk in today_tasks]
 
     try:
         await msg.delete()
@@ -1886,14 +1877,21 @@ async def handle_voice_action(
                 reply += "\n\n" + ai_message
             if plan_done:
                 reply += "\n\n" + t("voice_action.all_done", lang)
-            updated_plan = await t_svc.plan_repo.get_active_today(pet.id)
-            kb = (
-                get_task_keyboard(updated_plan.tasks, lang=lang)
-                if updated_plan
-                else get_back_keyboard(lang)
-            )
+            updated_plan = await t_svc.plan_repo.get_active_plan(pet.id)
+            if not updated_plan:
+                kb = get_back_keyboard(lang)
+            elif updated_plan.week_number is not None:
+                kb = get_week_day_keyboard(
+                    updated_plan.tasks, updated_plan.id, iso_weekday(), lang=lang
+                )
+            else:
+                kb = get_task_keyboard(updated_plan.tasks, lang=lang)
         else:
-            reply = ai_message or t("voice_action.all_done", lang)
+            # plan_done=True → all tasks already complete; False → hint miss / no plan
+            if plan_done:
+                reply = ai_message or t("voice_action.all_done", lang)
+            else:
+                reply = ai_message or t("training.task.not_found", lang)
             kb = get_back_keyboard(lang)
     else:
         if is_media and not usr.is_premium:

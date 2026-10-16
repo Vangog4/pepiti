@@ -1,6 +1,7 @@
 """Unit tests for AiService._postprocess — safe text normalization."""
+
 import pytest
-from app.services.ai_service import AiService
+from app.services.ai_service import AiService, _coach_format
 
 pp = AiService._postprocess
 
@@ -197,3 +198,16 @@ class TestParagraphInjection:
         text = "Текст.\n1. Шаг один.\n2. Шаг два."
         assert len(text) < 300
         assert "\n\n" not in pp(text)
+
+
+class TestCoachFormatLocale:
+    def test_headers_match_language(self):
+        assert "Main cause" in _coach_format("en")
+        assert "Главная причина" in _coach_format("ru")
+        assert "Hauptursache" in _coach_format("de")
+        assert "Cause principale" in _coach_format("fr")
+        assert "Causa principal" in _coach_format("es")
+        assert "Causa principal" in _coach_format("pt")
+
+    def test_unknown_locale_falls_back_to_ru_headers(self):
+        assert "Главная причина" in _coach_format("xx")

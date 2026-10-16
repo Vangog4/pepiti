@@ -7,18 +7,20 @@ from pathlib import Path
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiohttp import web
-from sqlalchemy import distinct, func, or_, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import distinct, func, or_, select, text
 
 from app.api.auth import validate_init_data
+from app.api.mobile_auth import decode_jwt, issue_jwt, verify_vk_token
 from app.core.config import settings
 from app.core.shop import SHOP_URL_BY_SIZE, SHOP_URL_LONGPLAY, SHOP_URL_MAIN, SHOP_URL_TRAINING
-from app.i18n import normalize_locale
+from app.i18n import normalize_locale, t
 from app.infrastructure.db.models.coach_thread import CoachThreadModel
+from app.infrastructure.db.models.mobile_auth import MobileAuthModel
 from app.infrastructure.db.models.pet import PetModel
 from app.infrastructure.db.models.subscription import SubscriptionModel
 from app.infrastructure.db.models.training import TrainingPlanModel, TrainingTaskModel
 from app.infrastructure.db.models.user import UserModel
+from app.infrastructure.db.repositories.training_repo import TrainingPlanRepository
 from app.infrastructure.redis.admin_log import AdminLog
 from app.infrastructure.redis.metrics import BotMetrics
 from app.services.broadcast_service import run_broadcast
@@ -28,6 +30,7 @@ from app.services.referral_service import (
     milestone_label,
     milestone_reward,
 )
+from app.services.training_service import TrainingService, tasks_for_today
 
 _VALID_THREAD_STATUSES = {"active", "archived", "all"}
 
@@ -95,44 +98,59 @@ def _auth(request: web.Request) -> int:
     return tid
 
 
-def _validate_pet(body: dict) -> list:
+def _auth_mobile(request: web.Request) -> int:
+    """Return user_id (users.id PK) from JWT Bearer token or raise HTTPUnauthorized.
+
+    Used exclusively for mobile (VK ID) endpoints.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise web.HTTPUnauthorized()
+    token = auth_header[len("Bearer ") :]
+    user_id = decode_jwt(token, settings.MOBILE_JWT_SECRET)
+    if user_id is None:
+        raise web.HTTPUnauthorized()
+    return user_id
+
+
+def _validate_pet(body: dict, lang: str = "ru") -> list:
     errors = []
     name = str(body.get("name", "")).strip()
     if not name:
-        errors.append({"field": "name", "msg": "Имя не может быть пустым"})
+        errors.append({"field": "name", "msg": t("webapp.validation.name_empty", lang)})
     elif len(name) > 30:
-        errors.append({"field": "name", "msg": "Имя не более 30 символов"})
+        errors.append({"field": "name", "msg": t("webapp.validation.name_long", lang)})
 
     if len(str(body.get("breed", "")).strip()) > 40:
-        errors.append({"field": "breed", "msg": "Порода не более 40 символов"})
+        errors.append({"field": "breed", "msg": t("webapp.validation.breed_long", lang)})
 
     if len(str(body.get("goal", "")).strip()) > 150:
-        errors.append({"field": "goal", "msg": "Цель не более 150 символов"})
+        errors.append({"field": "goal", "msg": t("webapp.validation.goal_long", lang)})
 
     level = str(body.get("training_level") or "").strip()
     if level and level not in _VALID_TRAINING_LEVELS:
-        errors.append({"field": "training_level", "msg": "Недопустимый уровень"})
+        errors.append({"field": "training_level", "msg": t("webapp.validation.level", lang)})
 
     age = str(body.get("age_category") or "").strip()
     if age and age not in _VALID_AGE_CATEGORIES:
-        errors.append({"field": "age_category", "msg": "Недопустимый возраст"})
+        errors.append({"field": "age_category", "msg": t("webapp.validation.age", lang)})
 
     return errors
 
 
-def _validate_settings(body: dict) -> list:
+def _validate_settings(body: dict, lang: str = "ru") -> list:
     errors = []
     rt = str(body.get("reminder_time") or "").strip()
-    if rt and not _RE_TIME.match(rt):
-        errors.append({"field": "reminder_time", "msg": "Формат: ЧЧ:ММ, например 09:30"})
+    if rt and rt.lower() != "off" and not _RE_TIME.match(rt):
+        errors.append({"field": "reminder_time", "msg": t("webapp.validation.reminder", lang)})
 
     tz = str(body.get("timezone") or "").strip()
     if tz and tz not in _VALID_TIMEZONES:
-        errors.append({"field": "timezone", "msg": "Недопустимый часовой пояс"})
+        errors.append({"field": "timezone", "msg": t("webapp.validation.timezone", lang)})
 
-    lang = str(body.get("language_code") or "").strip()
-    if lang and lang not in _VALID_LANGS:
-        errors.append({"field": "language_code", "msg": "Недопустимый язык"})
+    loc = str(body.get("language_code") or "").strip()
+    if loc and loc not in _VALID_LANGS:
+        errors.append({"field": "language_code", "msg": t("webapp.validation.language", lang)})
 
     return errors
 
@@ -143,6 +161,26 @@ def _validate_settings(body: dict) -> list:
 @routes.get("/")
 async def index(request: web.Request) -> web.FileResponse:
     return web.FileResponse(_WEBAPP_DIR / "index.html")
+
+
+@routes.get("/api/health")
+async def health(request: web.Request) -> web.Response:
+    """Public liveness. 200 if process+DB ok, 503 if DB is down."""
+    payload: dict = {"ok": True, "service": "pepito-bot"}
+    session_factory = request.app.get("session_factory")
+    if session_factory is None:
+        payload["ok"] = False
+        payload["db"] = "missing"
+        return web.json_response(payload, status=503)
+    try:
+        async with session_factory() as session:
+            await session.execute(text("SELECT 1"))
+        payload["db"] = "ok"
+    except Exception:
+        payload["ok"] = False
+        payload["db"] = "error"
+        return web.json_response(payload, status=503)
+    return web.json_response(payload)
 
 
 @routes.get("/api/dashboard")
@@ -164,29 +202,23 @@ async def dashboard(request: web.Request) -> web.Response:
         pet = pet_row.scalar_one_or_none()
 
         today_tasks = []
+        plan_kind = None
         if pet:
-            plan_row = await session.execute(
-                select(TrainingPlanModel)
-                .where(
-                    TrainingPlanModel.pet_id == pet.id,
-                    TrainingPlanModel.is_active == True,
-                    func.date(TrainingPlanModel.created_at) == date.today(),
-                )
-                .options(selectinload(TrainingPlanModel.tasks))
-                .limit(1)
-            )
-            plan = plan_row.scalar_one_or_none()
+            plan_repo = TrainingPlanRepository(session)
+            plan = await plan_repo.get_active_plan(pet.id)
             if plan:
+                plan_kind = "week" if plan.week_number is not None else "day"
                 today_tasks = [
                     {
-                        "id": t.id,
-                        "title": t.title,
-                        "description": t.description,
-                        "duration_minutes": t.duration_minutes,
-                        "difficulty": t.difficulty,
-                        "is_completed": t.is_completed,
+                        "id": task.id,
+                        "title": task.title,
+                        "description": task.description,
+                        "duration_minutes": task.duration_minutes,
+                        "difficulty": task.difficulty,
+                        "is_completed": task.is_completed,
+                        "day_of_week": task.day_of_week,
                     }
-                    for t in plan.tasks
+                    for task in tasks_for_today(plan)
                 ]
 
         seven_days_ago = _dt.combine(date.today() - timedelta(days=6), _dt.min.time())
@@ -215,8 +247,11 @@ async def dashboard(request: web.Request) -> web.Response:
         ]
 
         # Settings snapshot for the settings tab (loaded once with dashboard)
+        reminder_raw = user.reminder_time or ""
+        reminder_off = reminder_raw == "off"
         user_settings = {
-            "reminder_time": user.reminder_time or "",
+            "reminder_time": "" if reminder_off else reminder_raw,
+            "reminder_disabled": reminder_off,
             "timezone": user.timezone or "UTC",
             "language_code": user.language_code or "ru",
         }
@@ -256,30 +291,31 @@ async def dashboard(request: web.Request) -> web.Response:
                 .select_from(UserModel)
                 .where(UserModel.referral_bonus_given == True)
             )
-        today = date.today()
-        r_new_today = await adm_session.execute(
-            select(func.count())
-            .select_from(UserModel)
-            .where(func.date(UserModel.created_at) == today)
-        )
-        r_active_today = await adm_session.execute(
-            select(func.count(func.distinct(TrainingPlanModel.user_id)))
-            .select_from(TrainingTaskModel)
-            .join(TrainingPlanModel, TrainingTaskModel.plan_id == TrainingPlanModel.id)
-            .where(
-                TrainingTaskModel.is_completed == True,
-                func.date(TrainingTaskModel.completed_at) == today,
-            )
-        )
-        onboarded_cnt = (
-            await adm_session.execute(
+            today = date.today()
+            r_new_today = await adm_session.execute(
                 select(func.count())
                 .select_from(UserModel)
-                .where(UserModel.onboarding_completed_at.isnot(None))
+                .where(func.date(UserModel.created_at) == today)
             )
-        ).scalar() or 0
+            r_active_today = await adm_session.execute(
+                select(func.count(func.distinct(TrainingPlanModel.user_id)))
+                .select_from(TrainingTaskModel)
+                .join(TrainingPlanModel, TrainingTaskModel.plan_id == TrainingPlanModel.id)
+                .where(
+                    TrainingTaskModel.is_completed == True,
+                    func.date(TrainingTaskModel.completed_at) == today,
+                )
+            )
+            onboarded_cnt = (
+                await adm_session.execute(
+                    select(func.count())
+                    .select_from(UserModel)
+                    .where(UserModel.onboarding_completed_at.isnot(None))
+                )
+            ).scalar() or 0
         premium_cnt = r_premium.scalar() or 0
         va = await request.app["metrics"].get_voice_stats()
+        ai = await request.app["metrics"].get_ai_stats()
         admin_stats = {
             "total_users": r_total.scalar() or 0,
             "premium_users": premium_cnt,
@@ -290,6 +326,13 @@ async def dashboard(request: web.Request) -> web.Response:
             "va_mark_done": va["va_mark_done"],
             "va_premium_gate": va["va_premium_gate"],
             "va_fallback": va["va_fallback"],
+            "ai_calls": ai["ai_calls"],
+            "ai_schema_ok": ai["ai_schema_ok"],
+            "ai_schema_fail": ai["ai_schema_fail"],
+            "ai_escalate": ai["ai_escalate"],
+            "ai_fallback": ai["ai_fallback"],
+            "ai_forbidden": ai["ai_forbidden"],
+            "schema_ok_rate_pct": ai["schema_ok_rate_pct"],
         }
 
     payload = {
@@ -346,7 +389,11 @@ async def dashboard(request: web.Request) -> web.Response:
                 "main": SHOP_URL_MAIN,
             },
         },
-        "meta": {"version": "1.4"},
+        "meta": {
+            "version": "1.5",
+            "bot_username": settings.BOT_USERNAME or "",
+            "plan_kind": plan_kind,
+        },
         **({"is_admin": True, "admin_stats": admin_stats} if is_admin else {}),
     }
 
@@ -378,25 +425,26 @@ async def toggle_task(request: web.Request) -> web.Response:
         if task is None:
             raise web.HTTPNotFound()
 
-        task.is_completed = not task.is_completed
-        task.completed_at = _dt.utcnow() if task.is_completed else None
-        await session.commit()
-
-        remaining_row = await session.execute(
-            select(func.count())
-            .select_from(TrainingTaskModel)
-            .where(
-                TrainingTaskModel.plan_id == task.plan_id,
-                TrainingTaskModel.is_completed == False,
-            )
+        user_row = await session.execute(
+            select(UserModel).where(UserModel.telegram_id == telegram_id)
         )
-        all_done = remaining_row.scalar() == 0
+        user = user_row.scalar_one_or_none()
+        pet_row = await session.execute(
+            select(PetModel).where(PetModel.user_id == user.id).limit(1)
+        )
+        pet = pet_row.scalar_one_or_none()
+        if pet is None:
+            raise web.HTTPNotFound()
+
+        svc = TrainingService(TrainingPlanRepository(session), ai_service=None)  # type: ignore[arg-type]
+        task, scope_done = await svc.toggle_task(task_id, pet)
 
         return web.json_response(
             {
                 "id": task.id,
                 "is_completed": task.is_completed,
-                "plan_completed": all_done,
+                "plan_completed": scope_done,
+                "training_days": pet.training_days or 0,
             }
         )
 
@@ -410,10 +458,6 @@ async def update_pet(request: web.Request) -> web.Response:
     except Exception as e:
         raise web.HTTPBadRequest() from e
 
-    errors = _validate_pet(body)
-    if errors:
-        return web.json_response({"errors": errors}, status=422)
-
     session_factory = request.app["session_factory"]
 
     async with session_factory() as session:
@@ -423,6 +467,11 @@ async def update_pet(request: web.Request) -> web.Response:
         user = user_row.scalar_one_or_none()
         if user is None:
             raise web.HTTPNotFound()
+
+        lang = normalize_locale(user.language_code)
+        errors = _validate_pet(body, lang)
+        if errors:
+            return web.json_response({"errors": errors}, status=422)
 
         pet_row = await session.execute(
             select(PetModel).where(PetModel.user_id == user.id).limit(1)
@@ -469,10 +518,6 @@ async def update_settings(request: web.Request) -> web.Response:
     except Exception as e:
         raise web.HTTPBadRequest() from e
 
-    errors = _validate_settings(body)
-    if errors:
-        return web.json_response({"errors": errors}, status=422)
-
     session_factory = request.app["session_factory"]
 
     async with session_factory() as session:
@@ -483,9 +528,19 @@ async def update_settings(request: web.Request) -> web.Response:
         if user is None:
             raise web.HTTPNotFound()
 
+        lang = normalize_locale(user.language_code)
+        errors = _validate_settings(body, lang)
+        if errors:
+            return web.json_response({"errors": errors}, status=422)
+
         for field in ("reminder_time", "timezone", "language_code"):
             if field in body:
-                val = str(body[field]).strip() if body[field] else None
+                raw = body[field]
+                val = str(raw).strip() if raw else None
+                if field == "reminder_time" and val and val.lower() == "off":
+                    val = "off"
+                elif field == "reminder_time" and not val:
+                    val = None
                 setattr(user, field, val)
 
         await session.commit()
@@ -935,42 +990,36 @@ async def download_training_pdf(request: web.Request) -> web.Response:
         if pet is None:
             raise web.HTTPNotFound(reason="Pet not found")
 
-        plan_row = await session.execute(
-            select(TrainingPlanModel)
-            .where(
-                TrainingPlanModel.pet_id == pet.id,
-                TrainingPlanModel.is_active == True,
-                func.date(TrainingPlanModel.created_at) == date.today(),
-            )
-            .options(selectinload(TrainingPlanModel.tasks))
-            .limit(1)
-        )
-        plan = plan_row.scalar_one_or_none()
+        plan_repo = TrainingPlanRepository(session)
+        plan = await plan_repo.get_active_plan(pet.id)
         if plan is None:
             raise web.HTTPNotFound(reason="No active plan for today")
 
+        source_tasks = tasks_for_today(plan)
         tasks_data = sorted(
             [
                 {
-                    "day_of_week": t.day_of_week,
-                    "title": t.title,
-                    "description": t.description,
-                    "duration_minutes": t.duration_minutes,
-                    "difficulty": t.difficulty,
-                    "is_completed": t.is_completed,
+                    "day_of_week": task.day_of_week,
+                    "title": task.title,
+                    "description": task.description,
+                    "duration_minutes": task.duration_minutes,
+                    "difficulty": task.difficulty,
+                    "is_completed": task.is_completed,
                 }
-                for t in plan.tasks
+                for task in source_tasks
             ],
-            key=lambda t: t["day_of_week"] or 0,
+            key=lambda row: row["day_of_week"] or 0,
         )
 
     from app.services.pdf_service import generate_training_pdf
 
+    lang = normalize_locale(user.language_code)
     pdf_bytes = generate_training_pdf(
         pet_name=pet.name or "Питомец",
         plan_title=plan.title or "План тренировок",
         plan_goal=plan.goal or "",
         tasks=tasks_data,
+        lang=lang,
     )
 
     safe_name = (pet.name or "plan").replace(" ", "_")
@@ -1011,6 +1060,124 @@ async def archive_coach_thread(request: web.Request) -> web.Response:
         thread.status = "archived"
         if user.active_coach_thread_id == thread_id:
             user.active_coach_thread_id = None
+        await session.commit()
+
+    return web.json_response({"ok": True})
+
+
+# ── Mobile (VK ID + JWT) endpoints ─────────────────────────────────────────
+
+
+@routes.post("/api/auth/vk")
+async def auth_vk(request: web.Request) -> web.Response:
+    """Mobile-only: authenticate with VK ID, return JWT.
+
+    Body: {"vk_access_token": str, "vk_user_id": int, "first_name": str (optional)}
+    Response: {"token": str, "user_id": int, "is_new": bool, "onboarding_done": bool}
+    """
+    try:
+        body = await request.json()
+    except Exception as e:
+        raise web.HTTPBadRequest() from e
+
+    vk_access_token = str(body.get("vk_access_token") or "").strip()
+    vk_user_id_raw = body.get("vk_user_id")
+    if not vk_access_token or vk_user_id_raw is None:
+        raise web.HTTPBadRequest(reason="vk_access_token and vk_user_id are required")
+
+    try:
+        vk_user_id = int(vk_user_id_raw)
+    except (TypeError, ValueError):
+        raise web.HTTPBadRequest(reason="vk_user_id must be an integer") from None
+
+    first_name = str(body.get("first_name") or "").strip() or None
+
+    valid = await verify_vk_token(vk_access_token, vk_user_id)
+    if not valid:
+        raise web.HTTPUnauthorized(reason="VK token verification failed")
+
+    session_factory = request.app["session_factory"]
+    async with session_factory() as session:
+        # Look up existing MobileAuthModel by vk_id
+        ma_row = await session.execute(
+            select(MobileAuthModel).where(MobileAuthModel.vk_id == vk_user_id)
+        )
+        mobile_auth = ma_row.scalar_one_or_none()
+
+        if mobile_auth is None:
+            # New VK user — create UserModel with placeholder telegram_id
+            placeholder_telegram_id = -vk_user_id
+            new_user = UserModel(
+                telegram_id=placeholder_telegram_id,
+                first_name=first_name,
+            )
+            session.add(new_user)
+            await session.flush()  # get new_user.id
+
+            mobile_auth = MobileAuthModel(
+                user_id=new_user.id,
+                vk_id=vk_user_id,
+            )
+            session.add(mobile_auth)
+            await session.commit()
+            await session.refresh(new_user)
+
+            user_id = new_user.id
+            is_new = True
+            onboarding_done = new_user.onboarding_completed_at is not None
+        else:
+            # Existing VK user
+            user_row = await session.execute(
+                select(UserModel).where(UserModel.id == mobile_auth.user_id)
+            )
+            user = user_row.scalar_one_or_none()
+            if user is None:
+                raise web.HTTPInternalServerError(reason="User record missing")
+
+            user_id = user.id
+            is_new = False
+            onboarding_done = user.onboarding_completed_at is not None
+
+    token = issue_jwt(user_id, settings.MOBILE_JWT_SECRET, settings.MOBILE_JWT_EXPIRE_DAYS)
+    return web.json_response(
+        {
+            "token": token,
+            "user_id": user_id,
+            "is_new": is_new,
+            "onboarding_done": onboarding_done,
+        }
+    )
+
+
+@routes.post("/api/push/register")
+async def push_register(request: web.Request) -> web.Response:
+    """Mobile-only: save RuStore push token.
+
+    Header: Authorization: Bearer <jwt>
+    Body: {"push_token": str}
+    Response: {"ok": true}
+    """
+    user_id = _auth_mobile(request)
+
+    try:
+        body = await request.json()
+    except Exception as e:
+        raise web.HTTPBadRequest() from e
+
+    push_token = str(body.get("push_token") or "").strip()
+    if not push_token:
+        raise web.HTTPBadRequest(reason="push_token is required")
+
+    session_factory = request.app["session_factory"]
+    async with session_factory() as session:
+        ma_row = await session.execute(
+            select(MobileAuthModel).where(MobileAuthModel.user_id == user_id)
+        )
+        mobile_auth = ma_row.scalar_one_or_none()
+        if mobile_auth is None:
+            raise web.HTTPNotFound(reason="Mobile auth record not found")
+
+        mobile_auth.push_token = push_token
         await session.commit()
 
     return web.json_response({"ok": True})

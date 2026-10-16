@@ -1,4 +1,5 @@
 """Unit tests for CoachService — thread context, exchange saving, background task flags."""
+
 import time
 from unittest.mock import MagicMock
 
@@ -40,27 +41,35 @@ class TestBuildPromptContext:
 
     def test_free_truncates_to_context_limit(self, svc):
         # 12 messages → free limit is 10, so indices 0 and 1 are cut (messages[-10:] = indices 2..11)
-        msgs = [{"role": "user" if i % 2 == 0 else "coach", "content": f"xmsg_{i:03d}_x", "ts": i}
-                for i in range(12)]
+        msgs = [
+            {"role": "user" if i % 2 == 0 else "coach", "content": f"xmsg_{i:03d}_x", "ts": i}
+            for i in range(12)
+        ]
         thread = _make_thread(messages=msgs, message_count=6)
         ctx = svc.build_prompt_context(thread, is_premium=False)
         assert "xmsg_000_x" not in ctx  # trimmed (index 0)
         assert "xmsg_001_x" not in ctx  # trimmed (index 1)
-        assert "xmsg_002_x" in ctx      # kept (index 2, within last 10)
-        assert "xmsg_011_x" in ctx      # recent kept
+        assert "xmsg_002_x" in ctx  # kept (index 2, within last 10)
+        assert "xmsg_011_x" in ctx  # recent kept
 
     def test_premium_uses_wider_context(self, svc):
-        msgs = [{"role": "user" if i % 2 == 0 else "coach", "content": f"msg{i}", "ts": i}
-                for i in range(22)]
+        msgs = [
+            {"role": "user" if i % 2 == 0 else "coach", "content": f"msg{i}", "ts": i}
+            for i in range(22)
+        ]
         thread = _make_thread(messages=msgs, message_count=11)
         free_ctx = svc.build_prompt_context(thread, is_premium=False)
         prem_ctx = svc.build_prompt_context(thread, is_premium=True)
         assert len(prem_ctx) > len(free_ctx)
 
     def test_prepends_summary_when_messages_exceed_limit(self, svc):
-        msgs = [{"role": "user" if i % 2 == 0 else "coach", "content": f"x{i}", "ts": i}
-                for i in range(12)]
-        thread = _make_thread(messages=msgs, summary="Резюме: собака тянет поводок.", message_count=6)
+        msgs = [
+            {"role": "user" if i % 2 == 0 else "coach", "content": f"x{i}", "ts": i}
+            for i in range(12)
+        ]
+        thread = _make_thread(
+            messages=msgs, summary="Резюме: собака тянет поводок.", message_count=6
+        )
         ctx = svc.build_prompt_context(thread, is_premium=False)
         assert "Резюме: собака тянет поводок." in ctx
         assert "---" in ctx
@@ -143,6 +152,7 @@ class TestResetKeepsThreads:
     def test_reset_py_does_not_import_coach_thread_delete(self):
         import inspect
         import app.bot.handlers.reset as reset_mod
+
         src = inspect.getsource(reset_mod)
         assert "coach_threads" not in src or "active_coach_thread_id" in src, (
             "reset.py must not delete coach_threads"

@@ -16,6 +16,14 @@ class BotMetrics:
     SHARE_CLICK = "pepito:metrics:share_click"
     COPY_CLICK = "pepito:metrics:copy_click"
 
+    # AI logic-layer observability (app/logic + AiService)
+    AI_CALLS = "pepito:metrics:ai_calls"
+    AI_SCHEMA_OK = "pepito:metrics:ai_schema_ok"
+    AI_SCHEMA_FAIL = "pepito:metrics:ai_schema_fail"
+    AI_ESCALATE = "pepito:metrics:ai_escalate"
+    AI_FALLBACK = "pepito:metrics:ai_fallback"
+    AI_FORBIDDEN = "pepito:metrics:ai_forbidden"
+
     CAMPAIGNS_SET = "pepito:bc_campaigns"
 
     def __init__(self, redis_url: str) -> None:
@@ -106,4 +114,28 @@ class BotMetrics:
             "share_click": share,
             "copy_click": copy,
             "share_intent_total": share + copy,
+        }
+
+    async def get_ai_stats(self) -> dict:
+        pipe = self._client.pipeline()
+        pipe.get(self.AI_CALLS)
+        pipe.get(self.AI_SCHEMA_OK)
+        pipe.get(self.AI_SCHEMA_FAIL)
+        pipe.get(self.AI_ESCALATE)
+        pipe.get(self.AI_FALLBACK)
+        pipe.get(self.AI_FORBIDDEN)
+        r = await pipe.execute()
+        calls = int(r[0] or 0)
+        schema_ok = int(r[1] or 0)
+        schema_fail = int(r[2] or 0)
+        # Rate only over structured attempts (ok+fail), not free-text coach calls
+        structured = schema_ok + schema_fail
+        return {
+            "ai_calls": calls,
+            "ai_schema_ok": schema_ok,
+            "ai_schema_fail": schema_fail,
+            "ai_escalate": int(r[3] or 0),
+            "ai_fallback": int(r[4] or 0),
+            "ai_forbidden": int(r[5] or 0),
+            "schema_ok_rate_pct": (round(schema_ok / structured * 100, 1) if structured else 0.0),
         }

@@ -1,0 +1,65 @@
+{
+  "ai": {
+    "free_daily_limit": 5,
+    "schema_retries": 1,
+    "models": {
+      "default": "gemini-2.5-flash-lite",
+      "escalate": "gemini-2.5-flash",
+      "media": "gemini-2.5-flash",
+      "premium": "gemini-2.5-flash"
+    },
+    "kinds": {
+      "training_plan": "default",
+      "week_plan": "default",
+      "explain_exercise": "default",
+      "coach_answer": "default",
+      "progress_summary": "default",
+      "premium_deep": "premium",
+      "extract_profile": "default",
+      "training_intent": "default",
+      "media_analysis": "media",
+      "thread_title": "default",
+      "thread_summary": "default"
+    },
+    "forbidden_phrases": [
+      "диагноз",
+      "prescribe",
+      "диагностировал",
+      "лечение антибиотик",
+      "you have cancer",
+      "ветеринарный диагноз"
+    ],
+    "max_html_chars": {
+      "explain_exercise": 900,
+      "coach_answer": 1200,
+      "media_analysis": 900,
+      "progress_summary": 600,
+      "premium_deep": 1400,
+      "training_intent": 800
+    }
+  },
+  "premium": {
+    "stars_1m": 299,
+    "duration_days": 30
+  },
+  "referral": {
+    "bonus_days": 3,
+    "daily_limit": 10,
+    "milestones": [
+      {"count": 3, "bonus_days": 7, "plan_code": "milestone_3"},
+      {"count": 5, "bonus_days": 14, "plan_code": "milestone_5"},
+      {"count": 10, "bonus_days": 30, "plan_code": "milestone_10"},
+      {"count": 25, "bonus_days": 90, "plan_code": "milestone_25"}
+    ]
+  },
+  "coach": {
+    "context_messages_free": 10,
+    "context_messages_premium": 20,
+    "max_stored_messages": 40,
+    "summary_every": 10
+  },
+  "shop": {
+    "puppy_age_tokens": ["щенок", "puppy"],
+    "small_size_tokens": ["маленький", "small", "до 10"]
+  }
+}

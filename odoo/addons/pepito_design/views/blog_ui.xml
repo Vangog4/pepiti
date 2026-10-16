@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Hide date + "by author" under post title -->
+    <template id="blog_post_info_hide" inherit_id="website_blog.blog_post_info" name="Hide blog post date/author">
+        <xpath expr="//div[@id='o_wblog_post_info']" position="replace">
+            <div id="o_wblog_post_info" class="d-none"/>
+        </xpath>
+    </template>
+
+    <!-- Hide author overlay on list/cover images -->
+    <template id="opt_posts_loop_hide_author" inherit_id="website_blog.opt_posts_loop_show_author" name="Hide author on covers" active="False"/>
+</odoo>

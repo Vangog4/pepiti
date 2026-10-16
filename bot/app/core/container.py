@@ -22,10 +22,14 @@ from app.services.user_service import UserService
 
 
 class AppContainer(containers.DeclarativeContainer):
-    ai_service = providers.Singleton(AiService, api_key=settings.GEMINI_API_KEY)
     ai_rate_limiter = providers.Singleton(AiRateLimiter, redis_url=settings.REDIS_URL)
     metrics = providers.Singleton(BotMetrics, redis_url=settings.REDIS_URL)
     admin_log = providers.Singleton(AdminLog, redis_url=settings.REDIS_URL)
+    ai_service = providers.Singleton(
+        AiService,
+        api_key=settings.GEMINI_API_KEY,
+        metrics=metrics,
+    )
     wiring_config = containers.WiringConfiguration(packages=["app.bot.handlers"])
 
     # База данных

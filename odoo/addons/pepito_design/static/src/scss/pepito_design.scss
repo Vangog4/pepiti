@@ -17,16 +17,110 @@ $color-brown:   #5A3E28;
 }
 
 // ---------- Навигация ----------
+// IMPORTANT: do NOT use backdrop-filter / filter / transform on <header>.
+// Mobile menu is Bootstrap offcanvas with position:fixed, nested inside header.
+// Any filter/backdrop-filter on an ancestor creates a containing block → menu
+// opens only inside the header strip and looks "broken" on phones.
 #wrapwrap > header {
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     transition: background 0.3s ease;
+    // keep stacking above page content so toggler is clickable
+    position: relative;
+    z-index: 1030;
 }
 
 #wrapwrap > header .navbar {
     min-height: 96px !important;
     padding-top: 4px !important;
     padding-bottom: 4px !important;
+}
+
+// Compact header + visible hamburger on mobile (dark brand bar)
+@media (max-width: 991.98px) {
+    #wrapwrap > header .o_header_mobile.navbar {
+        min-height: 64px !important;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+    }
+
+    #wrapwrap > header .o_header_mobile .navbar-brand.logo img,
+    #wrapwrap > header .o_header_mobile .navbar-brand.logo span img {
+        height: 52px !important;
+        max-height: 52px !important;
+    }
+
+    // navbar-light icon is dark — invisible on #1A0A00 header
+    #wrapwrap > header .o_header_mobile button[data-bs-toggle="offcanvas"] {
+        position: relative;
+        z-index: 1040;
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #wrapwrap > header .o_header_mobile .navbar-toggler-icon {
+        width: 1.6rem;
+        height: 1.6rem;
+        // force light burger on dark header (works even if theme overrides bg image)
+        filter: invert(1) grayscale(1) brightness(2);
+        opacity: 1 !important;
+    }
+
+    // Offcanvas must attach to viewport, not the filtered/transformed header box
+    #wrapwrap > header #top_menu_collapse_mobile.offcanvas {
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 1055 !important;
+        width: 85vw !important;
+        max-width: 400px !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        background-color: #fff !important;
+        visibility: hidden;
+        transform: translateX(100%);
+        transition: transform 0.3s ease, visibility 0.3s ease;
+        overflow-y: auto;
+        pointer-events: auto;
+    }
+
+    #wrapwrap > header #top_menu_collapse_mobile.offcanvas.show,
+    #wrapwrap > header #top_menu_collapse_mobile.offcanvas.showing {
+        visibility: visible !important;
+        transform: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    // Odoo briefly adds this class while sticky-header animates; it sets
+    // .o_navbar_mobile { display:none } and blocks an open menu.
+    header.o_transformed_not_affixed #top_menu_collapse_mobile.show,
+    header.o_transformed_not_affixed #top_menu_collapse_mobile.showing {
+        display: flex !important;
+    }
+
+    // Backdrop above page, under panel
+    body .offcanvas-backdrop {
+        z-index: 1050 !important;
+    }
+
+    // Readable links inside white offcanvas (global header rule forces cream text)
+    #wrapwrap > header #top_menu_collapse_mobile .nav-link {
+        color: #1A0A00 !important;
+        font-weight: 700;
+    }
+
+    #wrapwrap > header #top_menu_collapse_mobile .nav-link.active,
+    #wrapwrap > header #top_menu_collapse_mobile .nav-link:hover {
+        color: #C8411A !important;
+    }
+
+    #wrapwrap > header #top_menu_collapse_mobile .btn-close {
+        filter: none;
+        opacity: 0.8;
+    }
 }
 
 // ---------- Логотип в шапке ----------
@@ -339,6 +433,33 @@ a[href*="ecommerce"] {
 // ---------- Badge / Ribbon ----------
 .product_ribbon {
     background: $color-rust !important;
+}
+
+// ---------- Журнал / блог (homepage block + post page) ----------
+.s_pepito_blog .pepito-blog-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.s_pepito_blog a:hover .pepito-blog-card {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 36px rgba(26, 10, 0, 0.12) !important;
+}
+.s_pepito_blog h2,
+.s_pepito_blog h3 {
+    font-family: "Playfair Display", serif;
+}
+
+#wrapwrap .o_wblog_post_content_field h2 {
+    color: $color-dark;
+    margin-top: 1.5rem;
+}
+
+#wrapwrap .o_wblog_post_content_field .lead {
+    color: $color-brown;
+    font-size: 1.1rem;
+}
+
+#wrapwrap .o_wblog_post_content_field a {
+    color: $color-rust;
 }
 
 // ---------- Анимация появления секций ----------

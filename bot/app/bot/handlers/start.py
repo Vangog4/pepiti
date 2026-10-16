@@ -26,11 +26,12 @@ async def cmd_start(
 
     await state.clear()
 
-    # Parse ref_ deep link before creating the user
+    # Parse deep links before creating the user
     parts = (message.text or "").split(maxsplit=1)
-    if len(parts) > 1 and parts[1].startswith("ref_"):
+    payload = parts[1].strip() if len(parts) > 1 else ""
+    if payload.startswith("ref_"):
         try:
-            referrer_tid = int(parts[1][4:])
+            referrer_tid = int(payload[4:])
             if referrer_tid != message.from_user.id:
                 await state.update_data(referrer_telegram_id=referrer_tid)
         except ValueError:
@@ -48,6 +49,23 @@ async def cmd_start(
     if user.onboarding_completed_at:
         tmp = await message.answer("⌛️", reply_markup=ReplyKeyboardRemove())
         await tmp.delete()
+        if payload in {"premium", "buy_premium"}:
+            from app.bot.handlers.subscription import send_premium_invoice
+
+            await send_premium_invoice(message, lang)
+            return
+        if payload == "coach":
+            from app.bot.handlers.menu import CoachState
+
+            await state.set_state(CoachState.waiting_for_question)
+            await message.answer(
+                t("coach.entry", lang),
+                reply_markup=get_main_menu(
+                    user.is_premium, webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
+                ),
+                parse_mode="HTML",
+            )
+            return
         await message.answer(
             t("onboarding.start.returning", lang, name=user.first_name),
             reply_markup=get_main_menu(

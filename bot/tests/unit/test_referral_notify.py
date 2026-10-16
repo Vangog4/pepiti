@@ -1,4 +1,5 @@
 """Unit tests for referral milestone notifications (Stage 11)."""
+
 import sys
 from unittest.mock import AsyncMock, MagicMock
 
@@ -17,6 +18,7 @@ from app.services.referral_service import (
 
 # ── dataclass structure ────────────────────────────────────────────────────────
 
+
 def test_result_has_referrer_telegram_id():
     r = ReferralAwardResult()
     assert r.referrer_telegram_id is None
@@ -34,6 +36,7 @@ def test_result_has_new_referral_count():
 
 # ── notify_referrer: no tid → early return ────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_notify_skips_when_no_tid():
     bot = MagicMock()
@@ -44,6 +47,7 @@ async def test_notify_skips_when_no_tid():
 
 
 # ── notify_referrer: base case (no milestone) ─────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_notify_base_sends_message():
@@ -58,13 +62,14 @@ async def test_notify_base_sends_message():
     await notify_referrer(bot, result, "ru")
     bot.send_message.assert_called_once()
     call_kwargs = bot.send_message.call_args
-    assert call_kwargs[0][0] == 12345          # chat_id
+    assert call_kwargs[0][0] == 12345  # chat_id
     sent_text = call_kwargs[0][1] if len(call_kwargs[0]) > 1 else call_kwargs[1].get("text", "")
     # base notify mentions count
     assert "2" in sent_text
 
 
 # ── notify_referrer: milestone reached ────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_notify_milestone_sends_milestone_text():
@@ -79,8 +84,11 @@ async def test_notify_milestone_sends_milestone_text():
     )
     await notify_referrer(bot, result, "ru")
     bot.send_message.assert_called_once()
-    sent_text = bot.send_message.call_args[0][1] if len(bot.send_message.call_args[0]) > 1 \
+    sent_text = (
+        bot.send_message.call_args[0][1]
+        if len(bot.send_message.call_args[0]) > 1
         else bot.send_message.call_args[1].get("text", "")
+    )
     assert milestone_label(milestone, "ru") in sent_text
     assert milestone_reward(milestone, "ru") in sent_text
 
@@ -98,14 +106,18 @@ async def test_notify_last_milestone_shows_all_done():
         milestone=last,
     )
     await notify_referrer(bot, result, "ru")
-    sent_text = bot.send_message.call_args[0][1] if len(bot.send_message.call_args[0]) > 1 \
+    sent_text = (
+        bot.send_message.call_args[0][1]
+        if len(bot.send_message.call_args[0]) > 1
         else bot.send_message.call_args[1].get("text", "")
+    )
     # Should NOT contain a "next goal" since this is the final milestone
     assert "Следующая цель" not in sent_text
     assert "Все награды" in sent_text
 
 
 # ── notify_referrer: exception → silent skip ──────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_notify_forbidden_silently_skipped():

@@ -105,6 +105,10 @@
       ref_no_link: "Открой <b>🐾 Позови друга</b> в боте, чтобы получить ссылку.",
       btn_copy_ref: "📋 Скопировать", btn_share_ref: "📤 Поделиться",
       error_title: "Что-то пошло не так", error_msg: "Попробуй открыть дашборд снова",
+      pdf_btn: "📄 Скачать план PDF", pdf_generating: "⏳ Генерирую...",
+      pdf_fail: "Не удалось создать PDF. Попробуй ещё раз.",
+      pdf_net: "Ошибка соединения. Попробуй ещё раз.",
+      reminder_off_hint: "Напоминания выключены в боте. Укажи время, чтобы включить.",
     },
     en: {
       days: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
@@ -186,6 +190,10 @@
       ref_no_link: "Open <b>🐾 Invite a friend</b> in the bot to get your link.",
       btn_copy_ref: "📋 Copy", btn_share_ref: "📤 Share",
       error_title: "Something went wrong", error_msg: "Try opening the dashboard again",
+      pdf_btn: "📄 Download plan PDF", pdf_generating: "⏳ Generating...",
+      pdf_fail: "Could not create PDF. Please try again.",
+      pdf_net: "Connection error. Please try again.",
+      reminder_off_hint: "Reminders are off in the bot. Enter a time to enable them.",
     },
     de: {
       days: ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"],
@@ -267,6 +275,10 @@
       ref_no_link: "Öffne <b>🐾 Freund einladen</b> im Bot, um deinen Link zu erhalten.",
       btn_copy_ref: "📋 Kopieren", btn_share_ref: "📤 Teilen",
       error_title: "Etwas ist schiefgelaufen", error_msg: "Versuche das Dashboard erneut zu öffnen",
+      pdf_btn: "📄 Plan als PDF", pdf_generating: "⏳ Erstelle...",
+      pdf_fail: "PDF konnte nicht erstellt werden. Bitte erneut versuchen.",
+      pdf_net: "Verbindungsfehler. Bitte erneut versuchen.",
+      reminder_off_hint: "Erinnerungen sind im Bot aus. Zeit eingeben, um sie einzuschalten.",
     },
     fr: {
       days: ["Di", "Lu", "Ma", "Me", "Je", "Ve", "Sa"],
@@ -348,6 +360,10 @@
       ref_no_link: "Ouvre <b>🐾 Inviter un ami</b> dans le bot pour obtenir ton lien.",
       btn_copy_ref: "📋 Copier", btn_share_ref: "📤 Partager",
       error_title: "Quelque chose a mal tourné", error_msg: "Essaie d'ouvrir à nouveau le tableau de bord",
+      pdf_btn: "📄 Télécharger le plan PDF", pdf_generating: "⏳ Génération...",
+      pdf_fail: "Impossible de créer le PDF. Réessaie.",
+      pdf_net: "Erreur de connexion. Réessaie.",
+      reminder_off_hint: "Rappels désactivés dans le bot. Indique une heure pour les activer.",
     },
     es: {
       days: ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"],
@@ -429,6 +445,10 @@
       ref_no_link: "Abre <b>🐾 Invitar a un amigo</b> en el bot para obtener tu enlace.",
       btn_copy_ref: "📋 Copiar", btn_share_ref: "📤 Compartir",
       error_title: "Algo salió mal", error_msg: "Intenta abrir el panel de nuevo",
+      pdf_btn: "📄 Descargar plan PDF", pdf_generating: "⏳ Generando...",
+      pdf_fail: "No se pudo crear el PDF. Inténtalo de nuevo.",
+      pdf_net: "Error de conexión. Inténtalo de nuevo.",
+      reminder_off_hint: "Los recordatorios están apagados en el bot. Introduce una hora para activarlos.",
     },
     pt: {
       days: ["Do", "Se", "Te", "Qu", "Qi", "Sx", "Sá"],
@@ -510,6 +530,10 @@
       ref_no_link: "Abra <b>🐾 Convidar um amigo</b> no bot para obter seu link.",
       btn_copy_ref: "📋 Copiar", btn_share_ref: "📤 Compartilhar",
       error_title: "Algo deu errado", error_msg: "Tente abrir o painel novamente",
+      pdf_btn: "📄 Baixar plano PDF", pdf_generating: "⏳ Gerando...",
+      pdf_fail: "Não foi possível criar o PDF. Tente novamente.",
+      pdf_net: "Erro de conexão. Tente novamente.",
+      reminder_off_hint: "Lembretes desligados no bot. Informe um horário para ligar.",
     },
   };
 
@@ -594,7 +618,11 @@
     setText("settings-heading", "settings_heading");
     setText("card-notif-title", "card_notif_title");
     setText("lbl-reminder", "lbl_reminder");
-    setText("hint-reminder-tz", "hint_reminder_tz");
+    if (_data && _data.settings && _data.settings.reminder_disabled) {
+      setText("hint-reminder-tz", "reminder_off_hint");
+    } else {
+      setText("hint-reminder-tz", "hint_reminder_tz");
+    }
     setText("lbl-tz", "lbl_tz");
     const saveSetBtn = $("btn-save-settings");
     if (saveSetBtn) { saveSetBtn.textContent = _ui("btn_save_settings"); saveSetBtn.dataset.label = _ui("btn_save_settings"); }
@@ -639,6 +667,7 @@
     // Error screen
     setText("error-title", "error_title");
     setText("error-msg", "error_msg");
+    setText("btn-download-pdf", "pdf_btn");
 
     // Coach tab
     setText("coach-heading", "coach_heading");
@@ -650,7 +679,39 @@
   // ── State ──────────────────────────────────────────────────────────
   let _data = null;
   const initData = tg.initData;
-  const TODAY_STR = new Date().toISOString().slice(0, 10);
+  const TODAY_STR = (() => {
+    const n = new Date();
+    const y = n.getFullYear();
+    const m = String(n.getMonth() + 1).padStart(2, "0");
+    const d = String(n.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + d;
+  })();
+
+  const AGE_VALUE_TO_KEY = {
+    "Щенок (до 4 мес)": "age_1",
+    "Щенок (4–12 мес)": "age_2",
+    "Молодой (1–3 года)": "age_3",
+    "Взрослый (3–7 лет)": "age_4",
+    "Пожилой (7+ лет)": "age_5",
+  };
+
+  function botUsername() {
+    const fromMeta = _data && _data.meta && _data.meta.bot_username;
+    if (fromMeta) return String(fromMeta).replace(/^@/, "");
+    const link = _data && _data.growth && _data.growth.referral_link;
+    if (link) {
+      const m = String(link).match(/t\.me\/([^?/]+)/);
+      if (m) return m[1];
+    }
+    return "pepitopetbot";
+  }
+
+  function openBotStart(param) {
+    const url = "https://t.me/" + botUsername() + "?start=" + encodeURIComponent(param);
+    try { tg.openTelegramLink(url); } catch (_) {
+      try { tg.close(); } catch (_) {}
+    }
+  }
 
   // ── DOM helpers ────────────────────────────────────────────────────
   const $ = id => document.getElementById(id);
@@ -780,7 +841,10 @@
     const meta = [];
     if (pet.breed)          meta.push(pet.breed);
     if (pet.training_level) meta.push(levelLabel(pet.training_level));
-    if (pet.age_category)   meta.push(pet.age_category);
+    if (pet.age_category) {
+      const ageKey = AGE_VALUE_TO_KEY[pet.age_category];
+      meta.push(ageKey ? _ui(ageKey) : pet.age_category);
+    }
     const el = $("pet-hero-meta");
     if (el) el.textContent = meta.join(" · ") || "";
   }
@@ -886,6 +950,13 @@
       task.is_completed = res.is_completed;
       applyCheckbox(task.is_completed, el);
       updateTaskProgress();
+      if (res.training_days != null && _data && _data.weekly_progress) {
+        _data.weekly_progress.training_days = res.training_days;
+        $("stat-days").textContent = res.training_days;
+        const streakEl = $("streak-value");
+        if (streakEl) streakEl.textContent = res.training_days;
+        if (res.training_days > 0) show("streak-chip");
+      }
       if (res.plan_completed) {
         show("state-all-done");
         try { tg.HapticFeedback.notificationOccurred("success"); } catch (_) {}
@@ -979,9 +1050,13 @@
   // ── Settings form ──────────────────────────────────────────────────
   function fillSettingsForm() {
     const s = (_data && _data.settings) || {};
-    $("st-reminder").value = s.reminder_time || "";
+    const reminderOff = !!s.reminder_disabled;
+    $("st-reminder").value = reminderOff ? "" : (s.reminder_time || "");
+    $("st-reminder").dataset.wasOff = reminderOff ? "1" : "";
     setSelectVal("st-tz", s.timezone || "UTC");
     setActiveLang(s.language_code || "ru");
+    const hint = $("hint-reminder-tz");
+    if (hint) hint.textContent = reminderOff ? _ui("reminder_off_hint") : _ui("hint_reminder_tz");
 
     if (_data && _data.user && !_data.user.is_premium) {
       show("premium-hint-card");
@@ -998,8 +1073,11 @@
       return;
     }
 
+    let reminderOut = rt || null;
+    if (!rt && $("st-reminder").dataset.wasOff === "1") reminderOut = "off";
+
     const body = {
-      reminder_time: rt || null,
+      reminder_time: reminderOut,
       timezone:      val("st-tz"),
     };
 
@@ -1019,8 +1097,10 @@
         throw e;
       }
       if (_data && _data.settings) {
-        _data.settings.reminder_time = body.reminder_time;
+        _data.settings.reminder_time = body.reminder_time === "off" ? "" : body.reminder_time;
+        _data.settings.reminder_disabled = body.reminder_time === "off";
         _data.settings.timezone      = body.timezone;
+        $("st-reminder").dataset.wasOff = body.reminder_time === "off" ? "1" : "";
       }
       try { tg.HapticFeedback.notificationOccurred("success"); } catch (_) {}
     });
@@ -1042,6 +1122,16 @@
         if (_data && _data.settings) _data.settings.language_code = lang;
         _lang = _norm_lang(lang);
         applyI18n();
+        _coachLoaded = false;
+        if (_data) {
+          renderDashboard(_data);
+          const active = document.querySelector(".tab.tab--active");
+          const tab = active ? active.dataset.tab : "pet";
+          if (tab === "rewards") renderRewards();
+          if (tab === "coach") fetchAndRenderCoach();
+          if (tab === "settings") fillSettingsForm();
+          if (tab === "pet") fillProfileForm();
+        }
         statusEl.textContent = _ui("lang_saved");
         statusEl.className = "save-status save-status--ok";
         setTimeout(() => { statusEl.textContent = ""; }, 2000);
@@ -1061,7 +1151,7 @@
   }
 
   $("btn-premium-hint").addEventListener("click", () => {
-    try { tg.close(); } catch (_) {}
+    openBotStart("premium");
   });
 
   // ── Rewards tab ────────────────────────────────────────────────────
@@ -1242,7 +1332,7 @@
 
   // ── Premium CTA ────────────────────────────────────────────────────
   $("btn-buy-premium").addEventListener("click", () => {
-    try { tg.sendData(JSON.stringify({ action: "buy_premium" })); } catch (_) {}
+    openBotStart("premium");
   });
 
   // ── Save wrapper ───────────────────────────────────────────────────
@@ -1759,10 +1849,7 @@
     // Card click → prompt to go to bot
     card.addEventListener("click", (e) => {
       if (e.target.closest(".btn-archive")) return;
-      const msg = isActive
-        ? _ui("thread_click_active", {title: title})
-        : _ui("thread_click_archived", {title: title});
-      try { tg.showAlert(msg); } catch (_) {}
+      openBotStart("coach");
     });
 
     // Archive button
@@ -1838,14 +1925,14 @@
     if (!btn) return;
     const origText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = "⏳ Генерирую...";
+    btn.textContent = _ui("pdf_generating");
 
     try {
       const res = await fetch("/api/training/pdf", {
         headers: { "X-Telegram-Init-Data": initData },
       });
       if (!res.ok) {
-        try { tg.showAlert("Не удалось создать PDF. Попробуй ещё раз."); } catch (_) {}
+        try { tg.showAlert(_ui("pdf_fail")); } catch (_) {}
         return;
       }
       const blob = await res.blob();
@@ -1860,7 +1947,7 @@
       URL.revokeObjectURL(url);
       try { tg.HapticFeedback.notificationOccurred("success"); } catch (_) {}
     } catch (_) {
-      try { tg.showAlert("Ошибка соединения. Попробуй ещё раз."); } catch (_) {}
+      try { tg.showAlert(_ui("pdf_net")); } catch (_) {}
     } finally {
       btn.disabled = false;
       btn.textContent = origText;

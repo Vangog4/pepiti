@@ -7,17 +7,23 @@ from app.i18n import t
 from app.infrastructure.db.models.subscription import SubscriptionModel
 from app.infrastructure.db.models.user import UserModel
 from app.infrastructure.db.repositories.user_repo import UserRepository
+from app.logic.rules import rule
 
-REFERRAL_BONUS_DAYS = 3
-REFERRAL_DAILY_LIMIT = 10
+REFERRAL_BONUS_DAYS = int(rule("referral.bonus_days", 3))
+REFERRAL_DAILY_LIMIT = int(rule("referral.daily_limit", 10))
 
-# Milestone tiers: count → extra bonus_days. plan_code used as idempotency key in SubscriptionModel.
-REFERRAL_MILESTONES = [
-    {"count": 3, "bonus_days": 7, "plan_code": "milestone_3"},
-    {"count": 5, "bonus_days": 14, "plan_code": "milestone_5"},
-    {"count": 10, "bonus_days": 30, "plan_code": "milestone_10"},
-    {"count": 25, "bonus_days": 90, "plan_code": "milestone_25"},
-]
+# Milestone tiers from rules.json — plan_code is idempotency key in SubscriptionModel.
+REFERRAL_MILESTONES = list(
+    rule(
+        "referral.milestones",
+        [
+            {"count": 3, "bonus_days": 7, "plan_code": "milestone_3"},
+            {"count": 5, "bonus_days": 14, "plan_code": "milestone_5"},
+            {"count": 10, "bonus_days": 30, "plan_code": "milestone_10"},
+            {"count": 25, "bonus_days": 90, "plan_code": "milestone_25"},
+        ],
+    )
+)
 
 
 def milestone_label(m: dict, lang: str) -> str:

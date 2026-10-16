@@ -1,5 +1,7 @@
 """Unit tests for ThrottlingMiddleware — 4 cases."""
+
 import sys
+
 sys.path.insert(0, ".")
 
 import pytest
@@ -10,6 +12,7 @@ from app.bot.middlewares.throttle import ThrottlingMiddleware
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _mw(redis_mock, admin_ids=None):
     with patch.object(aioredis, "from_url", return_value=redis_mock):
@@ -37,6 +40,7 @@ def _cb_update(uid: int = 100):
 
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_first_message_allowed():

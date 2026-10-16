@@ -221,6 +221,14 @@ STRINGS: dict[str, str] = {
     "shop.cat.longplay.btn": "🦴 Mâchouilles longue durée",
     "shop.cat.by_size.btn": "🐶 Chiots & par taille",
     "shop.cat.all.btn": "🛒 Toute la boutique",
+    "shop.rec.puppy_named": "🐶 Friandises chiot — pour {name}",
+    "shop.rec.small_named": "🐶 Friandises petites races — pour {name}",
+    "shop.rec.puppy_small_free": "🐶 Friandises pour chiots et petits chiens",
+    "shop.rec.longplay_named": "🎁 Friandises à mâcher — récompense pour {name}",
+    "shop.rec.longplay_free": "🦴 Friandises à mâcher longtemps",
+    "shop.rec.exercise_named": "🦴 Friandises d'exercice pour {name}",
+    "shop.rec.training_named": "🦴 Friandises d'entraînement pour {name}",
+    "shop.rec.training_free": "🦴 Friandises d'entraînement",
     # ── Invite / Referral ──────────────────────────────────────────────────────
     "invite.title": "🐾 <b>Invitez un ami — bonus pour tous les deux !</b>",
     "invite.link_label": "🔗 Votre lien :",
@@ -286,6 +294,15 @@ STRINGS: dict[str, str] = {
         "✔ Votre remboursement a été traité. Abonnement Premium désactivé.\n"
         "Si c'est une erreur, veuillez contacter le support."
     ),
+    "webapp.validation.name_empty": "Le nom ne peut pas être vide",
+    "webapp.validation.name_long": "Nom : 30 caractères max",
+    "webapp.validation.breed_long": "Race : 40 caractères max",
+    "webapp.validation.goal_long": "Objectif : 150 caractères max",
+    "webapp.validation.level": "Niveau d'entraînement invalide",
+    "webapp.validation.age": "Catégorie d'âge invalide",
+    "webapp.validation.reminder": "Format : HH:MM, ex. 09:30",
+    "webapp.validation.timezone": "Fuseau horaire invalide",
+    "webapp.validation.language": "Langue invalide",
     # ── Reminders ─────────────────────────────────────────────────────────────
     "reminder.title": "⏰ <b>Rappels</b>",
     "reminder.status.off": "🔕 <b>Désactivé</b>",

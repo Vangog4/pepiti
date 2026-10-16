@@ -242,6 +242,14 @@ STRINGS: dict[str, str] = {
     "shop.cat.longplay.btn": "🦴 Долгоиграющие",
     "shop.cat.by_size.btn": "🐶 Для щенков и по размеру",
     "shop.cat.all.btn": "🛒 Весь магазин",
+    "shop.rec.puppy_named": "🐶 Лакомства для щенков — для {name}",
+    "shop.rec.small_named": "🐶 Лакомства для маленьких пород — для {name}",
+    "shop.rec.puppy_small_free": "🐶 Лакомства для щенков и малышей",
+    "shop.rec.longplay_named": "🎁 Долгоиграющие лакомства — награда для {name}",
+    "shop.rec.longplay_free": "🦴 Долгоиграющие лакомства",
+    "shop.rec.exercise_named": "🦴 Лакомства для упражнений {name}",
+    "shop.rec.training_named": "🦴 Лакомства для тренировок {name}",
+    "shop.rec.training_free": "🦴 Лакомства для дрессировки",
     # ── Invite / Referral ──────────────────────────────────────────────────────
     "invite.title": "🐾 <b>Позови друга — бонус обоим!</b>",
     "invite.link_label": "🔗 Твоя ссылка:",
@@ -309,6 +317,15 @@ STRINGS: dict[str, str] = {
         "✔ Возврат средств обработан. Подписка Premium деактивирована.\n"
         "Если это ошибка — обратись в поддержку."
     ),
+    "webapp.validation.name_empty": "Имя не может быть пустым",
+    "webapp.validation.name_long": "Имя не более 30 символов",
+    "webapp.validation.breed_long": "Порода не более 40 символов",
+    "webapp.validation.goal_long": "Цель не более 150 символов",
+    "webapp.validation.level": "Недопустимый уровень",
+    "webapp.validation.age": "Недопустимый возраст",
+    "webapp.validation.reminder": "Формат: ЧЧ:ММ, например 09:30",
+    "webapp.validation.timezone": "Недопустимый часовой пояс",
+    "webapp.validation.language": "Недопустимый язык",
     # ── Reminders ─────────────────────────────────────────────────────────────
     "reminder.title": "⏰ <b>Напоминания</b>",
     "reminder.status.off": "🔕 <b>Отключены</b>",

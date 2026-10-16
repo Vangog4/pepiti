@@ -7,6 +7,25 @@ from app.infrastructure.db.repositories.training_repo import TrainingPlanReposit
 from app.services.ai_service import AiService
 
 
+def iso_weekday(d: date | None = None) -> int:
+    """Monday=1 … Sunday=7 — same as bot week-plan `training.day.N`."""
+    return (d or date.today()).isoweekday()
+
+
+def tasks_for_today(plan: TrainingPlanModel | None) -> list[TrainingTaskModel]:
+    """Tasks the WebApp / bot treat as 'today'.
+
+    Week plan (`week_number` set): only this ISO weekday.
+    Daily plan: all tasks (day_of_week there is just insertion order).
+    """
+    if plan is None or not plan.tasks:
+        return []
+    if plan.week_number is not None:
+        dow = iso_weekday()
+        return [task for task in plan.tasks if task.day_of_week == dow]
+    return list(plan.tasks)
+
+
 class TrainingService:
     def __init__(self, plan_repo: TrainingPlanRepository, ai_service: AiService):
         self.plan_repo = plan_repo
@@ -39,12 +58,18 @@ class TrainingService:
         if plan:
             return plan
         week_number = date.today().isocalendar()[1]
+        # Deactivate prior active plans for this pet (old week / stale day)
+        await self.plan_repo.deactivate_for_pet(pet.id)
         plan_data = await self.ai_service.generate_week_plan(pet, lang=lang)
         plan_data["goal"] = plan_data.get("goal") or pet.goal
         return await self.plan_repo.create_week_plan(user_id, pet.id, plan_data, week_number)
 
     async def toggle_task(self, task_id: int, pet: PetModel) -> tuple[TrainingTaskModel, bool]:
-        """Toggle task completion. Returns (task, plan_fully_done)."""
+        """Toggle task completion. Returns (task, scope_completed).
+
+        Daily plan: scope = whole plan (`counted_at`).
+        Week plan: scope = that weekday (`counted_day_N`) — same as bot week_task.
+        """
         task = await self.plan_repo.get_task(task_id)
         if not task:
             raise ValueError(f"Task {task_id} not found")
@@ -57,11 +82,22 @@ class TrainingService:
 
         await self.plan_repo.session.commit()
 
+        plan = await self.plan_repo.get_plan(task.plan_id)
+        if plan is not None and plan.week_number is not None and task.day_of_week is not None:
+            day_done = await self.plan_repo.day_tasks_done(task.plan_id, task.day_of_week)
+            if day_done and task.is_completed:
+                meta = plan.plan_json or {}
+                day_key = f"counted_day_{task.day_of_week}"
+                if not meta.get(day_key):
+                    pet.training_days = (pet.training_days or 0) + 1
+                    plan.plan_json = {**meta, day_key: date.today().isoformat()}
+                    await self.plan_repo.session.commit()
+            return task, day_done
+
         plan_done = False
         if task.is_completed:
             plan_done = await self.plan_repo.all_tasks_done(task.plan_id)
-            if plan_done:
-                plan = await self.plan_repo.get_plan(task.plan_id)
+            if plan_done and plan is not None:
                 meta = plan.plan_json or {}
                 if not meta.get("counted_at"):
                     pet.training_days = (pet.training_days or 0) + 1
@@ -75,26 +111,36 @@ class TrainingService:
     ) -> tuple["TrainingTaskModel | None", bool]:
         """Find today's incomplete task matching hint and mark it done.
 
-        Falls back to first incomplete task when hint doesn't match any title.
+        Matching rules (strict → safe):
+        1. Substring match between hint and title (either way).
+        2. If exactly one incomplete task remains — mark it (safe default).
+        3. Otherwise no match — do not guess (avoids wrong task marked).
         Returns (task, plan_fully_done).
         """
-        plan = await self.plan_repo.get_active_today(pet.id)
-        if not plan or not plan.tasks:
+        plan = await self.plan_repo.get_active_plan(pet.id)
+        today_tasks = tasks_for_today(plan)
+        if not today_tasks:
             return None, False
 
-        incomplete = [t for t in plan.tasks if not t.is_completed]
+        incomplete = [task for task in today_tasks if not task.is_completed]
         if not incomplete:
             return None, True
 
-        hint_lower = hint.lower()
-        matched = next(
-            (
-                t
-                for t in incomplete
-                if hint_lower in t.title.lower() or t.title.lower() in hint_lower
-            ),
-            incomplete[0],
-        )
+        hint_lower = (hint or "").strip().lower()
+        matched = None
+        if hint_lower:
+            matched = next(
+                (
+                    t
+                    for t in incomplete
+                    if hint_lower in t.title.lower() or t.title.lower() in hint_lower
+                ),
+                None,
+            )
+        if matched is None and len(incomplete) == 1:
+            matched = incomplete[0]
+        if matched is None:
+            return None, False
         return await self.toggle_task(matched.id, pet)
 
     @staticmethod

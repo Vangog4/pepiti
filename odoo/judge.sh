@@ -102,7 +102,7 @@ REQUIRED_FILES=(
     "podman-compose.yml"
     "config/odoo.conf"
     "judge.sh"
-    "CLAUDE.md"
+    "../AGENTS.md"
 )
 for f in "${REQUIRED_FILES[@]}"; do
     if [[ -f "$f" ]]; then

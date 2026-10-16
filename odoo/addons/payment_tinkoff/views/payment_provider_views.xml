@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="payment_provider_form_tinkoff" model="ir.ui.view">
+        <field name="name">T-Bank Provider Form</field>
+        <field name="model">payment.provider</field>
+        <field name="inherit_id" ref="payment.payment_provider_form"/>
+        <field name="arch" type="xml">
+            <group name="provider_credentials" position="inside">
+                <group invisible="code != 'tinkoff'" name="tinkoff_credentials" string="T-Bank (Tinkoff)">
+                    <field name="tinkoff_terminal_key"
+                           string="TerminalKey"
+                           required="code == 'tinkoff' and state != 'disabled'"/>
+                    <field name="tinkoff_password"
+                           string="Password"
+                           password="True"
+                           required="code == 'tinkoff' and state != 'disabled'"/>
+                    <field name="tinkoff_send_receipt"/>
+                    <field name="tinkoff_taxation"
+                           invisible="not tinkoff_send_receipt"
+                           required="code == 'tinkoff' and state != 'disabled' and tinkoff_send_receipt"/>
+                    <div colspan="2" class="text-muted">
+                        NotificationURL (для ЛК Т-Банка):
+                        <code>/payment/tinkoff/notification</code>
+                        — полный URL: https://pepitopet.ru/payment/tinkoff/notification
+                    </div>
+                </group>
+            </group>
+        </field>
+    </record>
+</odoo>

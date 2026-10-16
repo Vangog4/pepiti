@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Article + BreadcrumbList JSON-LD on blog post pages -->
+    <template id="blog_post_jsonld" inherit_id="website_blog.blog_post_complete" name="Pepito Blog Article JSON-LD">
+        <xpath expr="//section[@id='o_wblog_post_footer']" position="before">
+            <t t-set="pepito_og" t-value="blog_post.website_meta_og_img or ''"/>
+            <t t-if="pepito_og and pepito_og.startswith('/web/')">
+                <t t-set="pepito_og" t-value="'https://pepitopet.ru' + pepito_og"/>
+            </t>
+            <t t-set="pepito_page" t-value="'https://pepitopet.ru' + (blog_post.website_url or '')"/>
+            <t t-set="pepito_article_ld" t-value="{
+                '@context': 'https://schema.org',
+                '@type': 'BlogPosting',
+                'headline': blog_post.name or '',
+                'description': blog_post.website_meta_description or blog_post.subtitle or '',
+                'datePublished': (blog_post.post_date or blog_post.create_date).strftime('%Y-%m-%dT%H:%M:%S+00:00') if (blog_post.post_date or blog_post.create_date) else '',
+                'dateModified': blog_post.write_date.strftime('%Y-%m-%dT%H:%M:%S+00:00') if blog_post.write_date else '',
+                'author': {'@type': 'Organization', 'name': 'Pepito Pet', 'url': 'https://pepitopet.ru'},
+                'publisher': {
+                    '@type': 'Organization',
+                    'name': 'Pepito Pet',
+                    'logo': {'@type': 'ImageObject', 'url': 'https://pepitopet.ru/web/image/website/1/logo'},
+                },
+                'mainEntityOfPage': {'@type': 'WebPage', '@id': pepito_page},
+                'image': pepito_og or 'https://pepitopet.ru/web/image/website/1/logo',
+                'inLanguage': 'ru-RU',
+                'isPartOf': {'@type': 'Blog', 'name': 'Советы кинолога', 'url': 'https://pepitopet.ru/blog'},
+            }"/>
+            <t t-set="pepito_breadcrumb_ld" t-value="{
+                '@context': 'https://schema.org',
+                '@type': 'BreadcrumbList',
+                'itemListElement': [
+                    {'@type': 'ListItem', 'position': 1, 'name': 'Главная', 'item': 'https://pepitopet.ru/'},
+                    {'@type': 'ListItem', 'position': 2, 'name': 'Советы кинолога', 'item': 'https://pepitopet.ru/blog'},
+                    {'@type': 'ListItem', 'position': 3, 'name': blog_post.name or '', 'item': pepito_page},
+                ],
+            }"/>
+            <script type="application/ld+json" t-out="json.dumps(pepito_article_ld, ensure_ascii=False)"/>
+            <script type="application/ld+json" t-out="json.dumps(pepito_breadcrumb_ld, ensure_ascii=False)"/>
+        </xpath>
+    </template>
+</odoo>

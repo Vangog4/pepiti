@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Link existing card / MIR methods when available; create MIR if missing -->
+    <record id="payment_method_mir" model="payment.method">
+        <field name="name">МИР</field>
+        <field name="code">mir</field>
+        <field name="sequence">25</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

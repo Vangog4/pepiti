@@ -1,6 +1,8 @@
 """Unit tests for app/services/broadcast_service.run_broadcast — 4 cases."""
+
 import asyncio
 import sys
+
 sys.path.insert(0, ".")
 
 import pytest
@@ -37,14 +39,17 @@ def _make_bot():
 # Tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_all_sent():
     """All IDs succeed: N user messages + 1 admin report sent."""
     bot = _make_bot()
 
-    with patch("asyncio.sleep", new_callable=AsyncMock), \
-         patch("app.services.broadcast_service.TelegramForbiddenError", _Forbidden), \
-         patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfter):
+    with (
+        patch("asyncio.sleep", new_callable=AsyncMock),
+        patch("app.services.broadcast_service.TelegramForbiddenError", _Forbidden),
+        patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfter),
+    ):
         await run_broadcast(bot, [1, 2, 3], "Hello", admin_telegram_id=999)
 
     # 3 user sends + 1 admin completion report
@@ -62,16 +67,18 @@ async def test_forbidden_skipped():
 
     bot.send_message = AsyncMock(side_effect=_side)
 
-    with patch("asyncio.sleep", new_callable=AsyncMock), \
-         patch("app.services.broadcast_service.TelegramForbiddenError", _Forbidden), \
-         patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfter):
+    with (
+        patch("asyncio.sleep", new_callable=AsyncMock),
+        patch("app.services.broadcast_service.TelegramForbiddenError", _Forbidden),
+        patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfter),
+    ):
         await run_broadcast(bot, [1, 2, 3], "Hello", admin_telegram_id=999)
 
     # 3 attempts (one raised) + 1 admin report = 4 calls
     assert bot.send_message.call_count == 4
     report_text = bot.send_message.call_args_list[-1].kwargs.get("text", "")
-    assert "2" in report_text   # 2 sent
-    assert "1" in report_text   # 1 failed
+    assert "2" in report_text  # 2 sent
+    assert "1" in report_text  # 1 failed
 
 
 @pytest.mark.asyncio
@@ -87,9 +94,11 @@ async def test_retry_after_then_success():
 
     bot.send_message = AsyncMock(side_effect=_side)
 
-    with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep, \
-         patch("app.services.broadcast_service.TelegramForbiddenError", _Forbidden), \
-         patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfter):
+    with (
+        patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        patch("app.services.broadcast_service.TelegramForbiddenError", _Forbidden),
+        patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfter),
+    ):
         await run_broadcast(bot, [1, 2], "Hello", admin_telegram_id=999)
 
     # id=1 once + id=2 twice (initial raise + retry) + admin report = 4 calls
@@ -102,9 +111,11 @@ async def test_empty_list():
     """No IDs: only the admin completion report is sent."""
     bot = _make_bot()
 
-    with patch("asyncio.sleep", new_callable=AsyncMock), \
-         patch("app.services.broadcast_service.TelegramForbiddenError", _Forbidden), \
-         patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfter):
+    with (
+        patch("asyncio.sleep", new_callable=AsyncMock),
+        patch("app.services.broadcast_service.TelegramForbiddenError", _Forbidden),
+        patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfter),
+    ):
         await run_broadcast(bot, [], "Hello", admin_telegram_id=999)
 
     assert bot.send_message.call_count == 1

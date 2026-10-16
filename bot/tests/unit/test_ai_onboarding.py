@@ -1,4 +1,5 @@
 """Unit tests for AiService.extract_pet_profile (Stage 9: conversational onboarding)."""
+
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -25,7 +26,9 @@ def _mock_gemini(svc: AiService, response_text: str) -> None:
 async def test_full_message_no_missing_fields():
     """Complete message → missing_fields empty, profile filled."""
     svc = _make_service()
-    _mock_gemini(svc, """{
+    _mock_gemini(
+        svc,
+        """{
         "name": "Чарли",
         "breed": "Бигль",
         "age_category": "Молодой (1–3 года)",
@@ -34,9 +37,12 @@ async def test_full_message_no_missing_fields():
         "goal": "Перестать тянуть поводок",
         "missing_fields": [],
         "clarify_question": null
-    }""")
+    }""",
+    )
 
-    result = await svc.extract_pet_profile(language_code="ru", text="Бигль Чарли, 2 года, тянет поводок")
+    result = await svc.extract_pet_profile(
+        language_code="ru", text="Бигль Чарли, 2 года, тянет поводок"
+    )
 
     assert result["name"] == "Чарли"
     assert result["breed"] == "Бигль"
@@ -50,7 +56,9 @@ async def test_full_message_no_missing_fields():
 async def test_partial_message_missing_age():
     """Message without age → missing_fields contains age_category, size inferred from breed."""
     svc = _make_service()
-    _mock_gemini(svc, """{
+    _mock_gemini(
+        svc,
+        """{
         "name": "Вейк",
         "breed": "Ксолоитцкуинтли",
         "age_category": null,
@@ -59,9 +67,12 @@ async def test_partial_message_missing_age():
         "goal": "Спокойствие в транспорте",
         "missing_fields": ["age_category"],
         "clarify_question": "Сколько лет Вейку?"
-    }""")
+    }""",
+    )
 
-    result = await svc.extract_pet_profile(language_code="ru", text="Ксолоитцкуинтли Вейк, суетится в машине")
+    result = await svc.extract_pet_profile(
+        language_code="ru", text="Ксолоитцкуинтли Вейк, суетится в машине"
+    )
 
     assert result["name"] == "Вейк"
     assert result["size_category"] == "Средний (10–25 кг)"
@@ -73,7 +84,9 @@ async def test_partial_message_missing_age():
 async def test_clarification_merge_with_partial():
     """Second turn with partial data → Gemini merges, missing_fields becomes empty."""
     svc = _make_service()
-    _mock_gemini(svc, """{
+    _mock_gemini(
+        svc,
+        """{
         "name": "Вейк",
         "breed": "Ксолоитцкуинтли",
         "age_category": "Взрослый (3–7 лет)",
@@ -82,7 +95,8 @@ async def test_clarification_merge_with_partial():
         "goal": "Спокойствие в транспорте",
         "missing_fields": [],
         "clarify_question": null
-    }""")
+    }""",
+    )
 
     partial = {
         "name": "Вейк",
@@ -120,7 +134,8 @@ async def test_clarify_question_language_ru():
     svc = _make_service()
     captured_prompt: list[str] = []
 
-    async def _capture(model, contents):
+    async def _capture(*args, **kwargs):
+        contents = kwargs.get("contents", args[1] if len(args) > 1 else None)
         if isinstance(contents, str):
             captured_prompt.append(contents)
         result = MagicMock()
@@ -141,7 +156,8 @@ async def test_clarify_question_language_de():
     svc = _make_service()
     captured_prompt: list[str] = []
 
-    async def _capture(model, contents):
+    async def _capture(*args, **kwargs):
+        contents = kwargs.get("contents", args[1] if len(args) > 1 else None)
         if isinstance(contents, str):
             captured_prompt.append(contents)
         result = MagicMock()
