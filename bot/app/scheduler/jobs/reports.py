@@ -15,7 +15,10 @@ async def send_weekly_reports(session_factory: async_sessionmaker, bot: Bot) -> 
     async with session_factory() as session:
         result = await session.execute(
             select(UserModel)
-            .where(UserModel.onboarding_completed_at.isnot(None))
+            .where(
+                UserModel.telegram_id > 0,
+                UserModel.onboarding_completed_at.isnot(None),
+            )
             .options(selectinload(UserModel.pets))
         )
         users = list(result.scalars().all())

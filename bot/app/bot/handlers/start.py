@@ -1,5 +1,5 @@
 from aiogram import Router, types
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
 from dependency_injector.wiring import Provide, inject
@@ -46,6 +46,34 @@ async def cmd_start(
     )
 
     lang = normalize_locale(user.language_code)
+
+    if payload.startswith("auth_"):
+        import json
+
+        from redis.asyncio import Redis
+
+        session_token = payload[5:]
+        redis = Redis.from_url(settings.REDIS_URL, decode_responses=True)
+        try:
+            raw = await redis.get(f"tg_session:{session_token}")
+            if raw:
+                await redis.set(
+                    f"tg_session:{session_token}",
+                    json.dumps({"status": "authenticated", "user_id": user.id}),
+                    ex=600,
+                )
+                await message.answer(
+                    "🐾 <b>Вход в мобильное приложение Pepito подтвержден!</b>\n\n"
+                    "Вы можете вернуться в приложение — данные синхронизированы.",
+                    reply_markup=get_main_menu(
+                        user.is_premium, webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
+                    ),
+                    parse_mode="HTML",
+                )
+                return
+        finally:
+            await redis.aclose()
+
     if user.onboarding_completed_at:
         tmp = await message.answer("⌛️", reply_markup=ReplyKeyboardRemove())
         await tmp.delete()
@@ -80,3 +108,47 @@ async def cmd_start(
         reply_markup=ReplyKeyboardRemove(),
     )
     await state.set_state(OnboardingStates.collecting)
+
+
+@router.message(Command("connect"))
+@inject
+async def cmd_connect(
+    message: types.Message,
+    user_service: UserService = Provide[AppContainer.user_service],
+) -> None:
+    if not message.from_user:
+        return
+
+    import secrets
+
+    from redis.asyncio import Redis
+
+    user = await user_service.get_or_create_telegram_user(
+        telegram_id=message.from_user.id,
+        username=message.from_user.username,
+        first_name=message.from_user.first_name,
+        last_name=message.from_user.last_name,
+        language_code=message.from_user.language_code,
+    )
+
+    redis = Redis.from_url(settings.REDIS_URL, decode_responses=True)
+    try:
+        code = None
+        for _ in range(5):
+            candidate = f"{secrets.randbelow(900000) + 100000}"
+            if await redis.set(f"tg_connect_code:{candidate}", str(user.id), ex=600, nx=True):
+                code = candidate
+                break
+    finally:
+        await redis.aclose()
+
+    if not code:
+        await message.answer("⚠️ Не удалось сгенерировать код. Попробуйте еще раз через минуту.")
+        return
+
+    await message.answer(
+        f"📱 <b>Код для подключения мобильного приложения:</b>\n\n"
+        f"<code>{code}</code>\n\n"
+        "Код действителен 10 минут. Введите его в приложении Pepito на телефоне, чтобы синхронизировать данные с этим аккаунтом.",
+        parse_mode="HTML",
+    )

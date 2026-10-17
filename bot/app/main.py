@@ -58,7 +58,13 @@ async def main() -> None:
     scheduler.start()
 
     # Start aiohttp web server alongside the bot.
-    web_app = create_web_app(session_factory, container.metrics(), bot, container.admin_log())
+    web_app = create_web_app(
+        session_factory,
+        container.metrics(),
+        bot,
+        container.admin_log(),
+        ai_service=container.ai_service(),
+    )
     runner = web.AppRunner(web_app)
     await runner.setup()
     site = web.TCPSite(runner, settings.WEBAPP_BIND_HOST, settings.WEBAPP_BIND_PORT)

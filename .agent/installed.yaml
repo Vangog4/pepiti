@@ -55,3 +55,15 @@ installed:
     purpose: Протокол поиска MCP/CLI инструментов и защита от slopsquatting
     verified: true
     installed_at: "2026-08-28"
+  - name: fastapi
+    type: package
+    version: "0.143.2"
+    purpose: REST API framework со встроенным Swagger (/docs) для мобильного приложения
+    verified: true
+    installed_at: "2026-10-16"
+  - name: uvicorn
+    type: package
+    version: "0.54.0"
+    purpose: ASGI web server для FastAPI
+    verified: true
+    installed_at: "2026-10-16"

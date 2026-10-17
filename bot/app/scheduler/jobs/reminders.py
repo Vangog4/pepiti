@@ -68,6 +68,7 @@ async def _get_users_due_now(session: AsyncSession, current_utc: str) -> list[Us
 
     result = await session.execute(
         select(UserModel).where(
+            UserModel.telegram_id > 0,
             UserModel.onboarding_completed_at.isnot(None),
             or_(*conditions),
         )
