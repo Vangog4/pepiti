@@ -33,6 +33,10 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Scaffold Android Wrapper
+        working-directory: mobile
+        run: flutter create --org ru.pepitopet --platforms android .
+
       - name: Install Dependencies
         working-directory: mobile
         run: flutter pub get
