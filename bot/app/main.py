@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import os
+import signal
 
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
@@ -20,30 +22,46 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def main() -> None:
-    import os
+async def run_api(container: AppContainer, bot: Bot) -> None:
+    session_factory = container.session_factory()
+    web_app = create_web_app(
+        session_factory,
+        container.metrics(),
+        bot,
+        container.admin_log(),
+        ai_service=container.ai_service(),
+    )
+    runner = web.AppRunner(web_app)
+    await runner.setup()
+    site = web.TCPSite(runner, settings.WEBAPP_BIND_HOST, settings.WEBAPP_BIND_PORT)
+    await site.start()
+    logger.info(
+        "Pepito API Server listening on %s:%d (Swagger docs at /docs, mobile sync at /api/v1/)",
+        settings.WEBAPP_BIND_HOST,
+        settings.WEBAPP_BIND_PORT,
+    )
 
-    import sentry_sdk
+    stop_event = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            loop.add_signal_handler(sig, stop_event.set)
+        except (NotImplementedError, RuntimeError):
+            pass
 
-    if settings.SENTRY_DSN:
-        sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.1, environment="production")
+    try:
+        await stop_event.wait()
+    finally:
+        logger.info("Shutting down Pepito API Server...")
+        await runner.cleanup()
+        await bot.session.close()
 
-    # Expose optional Langfuse keys to process env for app.logic.trace
-    if settings.LANGFUSE_PUBLIC_KEY:
-        os.environ.setdefault("LANGFUSE_PUBLIC_KEY", settings.LANGFUSE_PUBLIC_KEY)
-    if settings.LANGFUSE_SECRET_KEY:
-        os.environ.setdefault("LANGFUSE_SECRET_KEY", settings.LANGFUSE_SECRET_KEY)
-    if settings.LANGFUSE_HOST:
-        os.environ.setdefault("LANGFUSE_HOST", settings.LANGFUSE_HOST)
 
-    container = AppContainer()
-    logger.info("Starting bot...")
-
-    bot = Bot(token=settings.BOT_TOKEN)
+async def run_bot(container: AppContainer, bot: Bot) -> None:
+    session_factory = container.session_factory()
     storage = RedisStorage.from_url(settings.REDIS_URL)
     dp = Dispatcher(storage=storage)
 
-    session_factory = container.session_factory()
     dp.update.middleware(
         ThrottlingMiddleware(
             redis_url=settings.REDIS_URL,
@@ -51,13 +69,40 @@ async def main() -> None:
         )
     )
     dp.update.middleware(DbSessionMiddleware(session_factory))
+    setup_routers(dp)
 
+    scheduler = create_scheduler(session_factory, bot)
+    scheduler.start()
+    logger.info("Pepito Bot Worker & Scheduler started.")
+
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("Start polling")
+        await dp.start_polling(bot)
+    finally:
+        logger.info("Shutting down Pepito Bot Worker...")
+        scheduler.shutdown(wait=False)
+        await storage.close()
+        await bot.session.close()
+
+
+async def run_all(container: AppContainer, bot: Bot) -> None:
+    session_factory = container.session_factory()
+    storage = RedisStorage.from_url(settings.REDIS_URL)
+    dp = Dispatcher(storage=storage)
+
+    dp.update.middleware(
+        ThrottlingMiddleware(
+            redis_url=settings.REDIS_URL,
+            admin_ids=set(settings.ADMIN_TELEGRAM_IDS),
+        )
+    )
+    dp.update.middleware(DbSessionMiddleware(session_factory))
     setup_routers(dp)
 
     scheduler = create_scheduler(session_factory, bot)
     scheduler.start()
 
-    # Start aiohttp web server alongside the bot.
     web_app = create_web_app(
         session_factory,
         container.metrics(),
@@ -80,6 +125,36 @@ async def main() -> None:
     finally:
         scheduler.shutdown(wait=False)
         await runner.cleanup()
+        await storage.close()
+        await bot.session.close()
+
+
+async def main() -> None:
+    import sentry_sdk
+
+    if settings.SENTRY_DSN:
+        sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.1, environment="production")
+
+    # Expose optional Langfuse keys to process env for app.logic.trace
+    if settings.LANGFUSE_PUBLIC_KEY:
+        os.environ.setdefault("LANGFUSE_PUBLIC_KEY", settings.LANGFUSE_PUBLIC_KEY)
+    if settings.LANGFUSE_SECRET_KEY:
+        os.environ.setdefault("LANGFUSE_SECRET_KEY", settings.LANGFUSE_SECRET_KEY)
+    if settings.LANGFUSE_HOST:
+        os.environ.setdefault("LANGFUSE_HOST", settings.LANGFUSE_HOST)
+
+    container = AppContainer()
+    bot = Bot(token=settings.BOT_TOKEN)
+
+    role = os.getenv("PEPITO_ROLE", "all").lower().strip()
+    logger.info("Initializing Pepito with role='%s'", role)
+
+    if role == "api":
+        await run_api(container, bot)
+    elif role == "bot":
+        await run_bot(container, bot)
+    else:
+        await run_all(container, bot)
 
 
 if __name__ == "__main__":

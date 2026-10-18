@@ -36,14 +36,31 @@ services:
       timeout: 3s
       retries: 5
 
-  bot:
+  api:
+    container_name: pepito-api
     build: .
     restart: always
+    environment:
+      - PEPITO_ROLE=api
     env_file:
       - .env
     networks:
       - pepito_net
       - npm_network
+    depends_on:
+      - db
+      - redis
+
+  bot:
+    container_name: pepito-bot
+    build: .
+    restart: always
+    environment:
+      - PEPITO_ROLE=bot
+    env_file:
+      - .env
+    networks:
+      - pepito_net
     depends_on:
       - db
       - redis
