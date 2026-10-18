@@ -1,10 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/providers.dart';
 import '../../data/models/pet.dart';
 import '../../data/models/product.dart';
-import '../home/home_controller.dart';
 
 class ShopState {
   final List<ProductModel> allProducts;
@@ -64,9 +62,9 @@ class ShopState {
 }
 
 class ShopController extends StateNotifier<ShopState> {
-  final ApiClient _apiClient;
+  final ApiClient apiClient;
 
-  ShopController(this._apiClient) : super(ShopState(isLoading: true)) {
+  ShopController(this.apiClient) : super(ShopState(isLoading: true)) {
     loadProducts();
   }
 
@@ -174,7 +172,7 @@ class ShopController extends StateNotifier<ShopState> {
     if (state.cartItems.isEmpty) return false;
 
     state = state.copyWith(isOrderProcessing: true);
-    await Future.delayed(const Duration(seconds: 2)); // Simulate payment initiation
+    await Future<void>.delayed(const Duration(seconds: 2)); // Simulate payment initiation
 
     state = state.copyWith(
       isOrderProcessing: false,

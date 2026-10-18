@@ -6,7 +6,6 @@ import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/providers.dart';
 import '../../core/sync/sync_engine.dart';
-import '../../data/models/sync_payload.dart';
 import '../../data/models/training_plan.dart';
 import '../../data/models/training_task.dart';
 import '../home/home_controller.dart';
@@ -84,7 +83,7 @@ class TrainingController extends StateNotifier<TrainingState> {
 
   Future<void> toggleTask(int taskId) async {
     // Forward to HomeController for home state sync
-    _read(homeControllerProvider.notifier).toggleTask(taskId);
+    await _read(homeControllerProvider.notifier).toggleTask(taskId);
 
     // Update in training plan local tasks
     if (state.activePlan != null) {

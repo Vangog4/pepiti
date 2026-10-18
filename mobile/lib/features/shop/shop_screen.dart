@@ -29,7 +29,7 @@ class ShopScreen extends ConsumerWidget {
     final textPrimary = isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
     final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
 
-    final filteredProducts = ref.read(shopControllerProvider.notifier).state.getFilteredProducts(pet);
+    final filteredProducts = state.getFilteredProducts(pet);
 
     return Scaffold(
       appBar: AppBar(

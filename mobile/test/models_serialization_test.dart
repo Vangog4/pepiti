@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pepito_mobile/data/models/coach_thread.dart';
 import 'package:pepito_mobile/data/models/pet.dart';
 import 'package:pepito_mobile/data/models/product.dart';
 import 'package:pepito_mobile/data/models/sync_payload.dart';
@@ -99,7 +98,7 @@ void main() {
           {'id': 501, 'title': 'Выдержка', 'is_completed': false, 'duration_minutes': 5}
         ],
         'subscription': {'is_premium': false, 'days_left': 0},
-        'coach_threads': [],
+        'coach_threads': <Map<String, dynamic>>[],
       };
 
       final pull = SyncPullResponse.fromJson(json);

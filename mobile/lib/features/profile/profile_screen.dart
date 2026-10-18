@@ -4,6 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
+import '../../data/models/pet.dart';
+import '../../data/models/user_profile.dart';
 import '../auth/telegram_connect_sheet.dart';
 import '../coach/widgets/premium_upsell_sheet.dart';
 import 'profile_controller.dart';
@@ -83,7 +85,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPetCard(BuildContext context, dynamic pet, Color textPrimary, Color textSecondary) {
+  Widget _buildPetCard(BuildContext context, PetModel? pet, Color textPrimary, Color textSecondary) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -92,7 +94,7 @@ class ProfileScreen extends ConsumerWidget {
             Container(
               width: 56,
               height: 56,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: AppColors.primaryGradient,
               ),
@@ -117,7 +119,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPremiumCard(BuildContext context, dynamic user, Color textPrimary, Color textSecondary) {
+  Widget _buildPremiumCard(BuildContext context, UserProfile? user, Color textPrimary, Color textSecondary) {
     final isPremium = user?.isPremium ?? false;
 
     return Container(
@@ -169,7 +171,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTelegramLinkCard(BuildContext context, dynamic user, Color textPrimary, Color textSecondary) {
+  Widget _buildTelegramLinkCard(BuildContext context, UserProfile? user, Color textPrimary, Color textSecondary) {
     final isLinked = user?.isTelegramLinked ?? false;
 
     return Card(
@@ -222,7 +224,7 @@ class ProfileScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     ProfileState state,
-    dynamic user,
+    UserProfile? user,
     Color textPrimary,
     Color textSecondary,
   ) {
@@ -277,9 +279,9 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildReferralCard(BuildContext context, dynamic user, Color textPrimary, Color textSecondary) {
+  Widget _buildReferralCard(BuildContext context, UserProfile? user, Color textPrimary, Color textSecondary) {
     final refLink = user?.telegramId != null
-        ? 'https://t.me/${ApiConstants.botUsername}?start=ref_${user.telegramId}'
+        ? 'https://t.me/${ApiConstants.botUsername}?start=ref_${user!.telegramId}'
         : 'https://pepitopet.ru/app';
 
     return Card(
@@ -315,8 +317,11 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: 16),
 
             ElevatedButton.icon(
-              onPressed: () {
-                // Share referral link
+              onPressed: () async {
+                final uri = Uri.parse(refLink);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
               },
               icon: const Icon(Icons.share_rounded, size: 18),
               label: const Text('Поделиться ссылкой с другом'),

@@ -172,7 +172,7 @@ class _CartSheetState extends ConsumerState<CartSheet> {
                             final success = await ref
                                 .read(shopControllerProvider.notifier)
                                 .checkoutTinkoff(_addressController.text);
-                            if (success && mounted) {
+                            if (success && context.mounted) {
                               Navigator.of(context).pop();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
