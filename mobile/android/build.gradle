@@ -13,6 +13,17 @@ subprojects {
     project.evaluationDependsOn(':app')
 }
 
+subprojects {
+    afterEvaluate { project ->
+        if (project.extensions.findByName("android") != null) {
+            Integer currentCompileSdk = project.android.compileSdk
+            if (currentCompileSdk == null || currentCompileSdk < 35) {
+                project.android.compileSdk = 35
+            }
+        }
+    }
+}
+
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
