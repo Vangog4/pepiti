@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter_haptic_feedback/flutter_haptic_feedback.dart';
+import 'package:flutter/services.dart';
 
 enum WhistlePreset {
   come(14000, 'Ко мне!'),
@@ -47,15 +47,15 @@ class TrainingToolsService {
 
   /// Triggers instant physical-like clicker with sound and strong haptic feedback
   Future<void> click() async {
-    // Haptic kick immediately
-    await FlutterHapticFeedback.vibrate(HapticsType.heavy);
+    // Haptic kick immediately via native platform Taptic/Vibrate engine
+    await HapticFeedback.heavyImpact();
 
     // Audio click trigger
     try {
       await _clickerPlayer.play(AssetSource('sounds/clicker.mp3'));
     } catch (_) {
       // Fallback secondary haptic pulse if audio fails
-      await FlutterHapticFeedback.vibrate(HapticsType.selection);
+      await HapticFeedback.selectionClick();
     }
   }
 

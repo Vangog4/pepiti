@@ -27,7 +27,6 @@ dependencies:
 
   # Audio & Cynologist Tools
   audioplayers: ^6.0.0
-  flutter_haptic_feedback: ^0.1.0
 
   # Notifications
   flutter_local_notifications: ^17.1.2
