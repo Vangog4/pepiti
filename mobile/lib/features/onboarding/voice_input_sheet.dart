@@ -19,7 +19,6 @@ class VoiceInputSheet extends ConsumerStatefulWidget {
 class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet> {
   late final AudioRecorder _audioRecorder;
   bool _isRecording = false;
-  String? _recordedPath;
 
   @override
   void initState() {
@@ -47,7 +46,6 @@ class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet> {
 
     setState(() {
       _isRecording = true;
-      _recordedPath = path;
     });
   }
 

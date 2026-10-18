@@ -6,7 +6,6 @@ import '../../core/sync/sync_engine.dart';
 import '../../data/models/pet.dart';
 import '../../data/models/user_profile.dart';
 import '../auth/auth_controller.dart';
-import '../home/home_controller.dart';
 
 class ProfileState {
   final UserProfile? user;
@@ -48,9 +47,9 @@ class ProfileState {
 class ProfileController extends StateNotifier<ProfileState> {
   final ApiClient _apiClient;
   final SyncEngine _syncEngine;
-  final Reader _read;
+  final Ref _ref;
 
-  ProfileController(this._apiClient, this._syncEngine, this._read) : super(ProfileState()) {
+  ProfileController(this._apiClient, this._syncEngine, this._ref) : super(ProfileState()) {
     _init();
   }
 
@@ -117,7 +116,7 @@ class ProfileController extends StateNotifier<ProfileState> {
   }
 
   Future<void> logout() async {
-    await _read(authControllerProvider.notifier).logout();
+    await _ref.read(authControllerProvider.notifier).logout();
   }
 }
 
@@ -125,5 +124,5 @@ final profileControllerProvider =
     StateNotifierProvider<ProfileController, ProfileState>((ref) {
   final api = ref.watch(apiClientProvider);
   final sync = ref.watch(syncEngineProvider);
-  return ProfileController(api, sync, ref.read);
+  return ProfileController(api, sync, ref);
 });

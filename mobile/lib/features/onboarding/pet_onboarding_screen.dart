@@ -293,7 +293,7 @@ class _PetOnboardingScreenState extends ConsumerState<PetOnboardingScreen> {
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary.withOpacity(0.12) : null,
           borderRadius: BorderRadius.circular(16),
-          border: BorderSide(
+          border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.cardBorderLight,
             width: isSelected ? 2 : 1,
           ),

@@ -70,7 +70,7 @@ class TrainingToolsService {
       setWhistleFrequency(frequencyHz);
     }
     _isWhistlePlaying = true;
-    await FlutterHapticFeedback.vibrate(HapticsType.light);
+    await HapticFeedback.lightImpact();
     try {
       await _whistlePlayer.play(AssetSource('sounds/whistle_${_whistleFrequency}hz.mp3'));
     } catch (_) {}
@@ -99,7 +99,7 @@ class TrainingToolsService {
         onTimerTick?.call(0);
         onTimerFinished?.call();
         // Vibrate upon finish
-        FlutterHapticFeedback.vibrate(HapticsType.success);
+        HapticFeedback.vibrate();
       }
     });
   }

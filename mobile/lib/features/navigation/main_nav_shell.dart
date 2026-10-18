@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
 import '../coach/coach_chat_screen.dart';
 import '../home/home_screen.dart';
 import '../profile/profile_screen.dart';
