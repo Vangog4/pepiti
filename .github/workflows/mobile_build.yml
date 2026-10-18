@@ -38,6 +38,7 @@ jobs:
         run: |
           flutter create --org ru.pepitopet --platforms android .
           rm -f test/widget_test.dart
+          sed -i 's/gradle-.*-all.zip/gradle-8.5-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
 
       - name: Install Dependencies
         working-directory: mobile
