@@ -1,0 +1,85 @@
+name: Build Pepito Mobile (Android & iOS)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile_build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Test Mobile App
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Analyze Dart Code
+        working-directory: mobile
+        run: flutter analyze
+
+      - name: Run Unit Tests
+        working-directory: mobile
+        run: flutter test
+
+      - name: Build Android Release APK
+        working-directory: mobile
+        run: flutter build apk --release
+
+      - name: Build Android Release AppBundle (AAB for RuStore)
+        working-directory: mobile
+        run: flutter build appbundle --release
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pepito-release-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pepito-release-aab
+          path: mobile/build/app/outputs/bundle/release/app-release.aab
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: mobile-v1.0
+          name: "Pepito Mobile v1.0.0 (Android Release)"
+          body: |
+            📱 **Pepito Mobile Android App (v1.0.0)**
+            
+            - Прямая установка на Android: скачайте и откройте `app-release.apk`.
+            - Для публикации в RuStore / Google Play: используйте `app-release.aab`.
+          draft: false
+          prerelease: false
+          files: |
+            mobile/build/app/outputs/flutter-apk/app-release.apk
+            mobile/build/app/outputs/bundle/release/app-release.aab
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

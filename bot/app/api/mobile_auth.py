@@ -40,7 +40,7 @@ def issue_jwt(user_id: int, secret: str, expire_days: int) -> str:
     """Create a signed JWT with sub=user_id and expiry."""
     now = datetime.now(tz=UTC)
     payload = {
-        "sub": user_id,
+        "sub": str(user_id),
         "exp": now + timedelta(days=expire_days),
         "iat": now,
     }
