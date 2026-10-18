@@ -35,7 +35,9 @@ jobs:
 
       - name: Scaffold Android Wrapper
         working-directory: mobile
-        run: flutter create --org ru.pepitopet --platforms android .
+        run: |
+          flutter create --org ru.pepitopet --platforms android .
+          rm -f test/widget_test.dart
 
       - name: Install Dependencies
         working-directory: mobile
