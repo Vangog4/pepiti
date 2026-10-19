@@ -28,6 +28,7 @@ android {
     ndkVersion "25.1.8937393"
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
@@ -44,6 +45,7 @@ android {
         applicationId "ru.pepitopet.app"
         minSdk 26
         targetSdk 35
+        multiDexEnabled true
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
@@ -59,4 +61,8 @@ android {
 
 flutter {
     source '../..'
+}
+
+dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 }
