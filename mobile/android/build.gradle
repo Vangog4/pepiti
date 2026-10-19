@@ -3,17 +3,6 @@ allprojects {
         google()
         mavenCentral()
     }
-    ext {
-        set("flutter.compileSdkVersion", 35)
-        set("flutter.minSdkVersion", 26)
-        set("flutter.targetSdkVersion", 35)
-        flutter = [
-            compileSdkVersion: 35,
-            minSdkVersion: 26,
-            targetSdkVersion: 35,
-            ndkVersion: "27.0.12077973"
-        ]
-    }
 }
 
 rootProject.buildDir = '../build'
@@ -25,45 +14,41 @@ subprojects {
 }
 
 subprojects { subproject ->
-    subproject.plugins.withId("com.android.library") {
-        try {
-            if (subproject.android.extensions.findByName("flutter") == null) {
-                subproject.android.extensions.add("flutter", [
+    if (subproject.name != "app") {
+        subproject.plugins.withId("com.android.library") {
+            try {
+                if (subproject.android.extensions.findByName("flutter") == null) {
+                    subproject.android.extensions.add("flutter", [
+                        compileSdkVersion: 35,
+                        minSdkVersion: 26,
+                        targetSdkVersion: 35,
+                        ndkVersion: "27.0.12077973"
+                    ])
+                }
+            } catch (Exception ignored) {}
+
+            try {
+                subproject.android.ext.flutter = [
                     compileSdkVersion: 35,
                     minSdkVersion: 26,
                     targetSdkVersion: 35,
                     ndkVersion: "27.0.12077973"
-                ])
-            }
-        } catch (Exception ignored) {}
+                ]
+            } catch (Exception ignored) {}
 
-        try {
-            subproject.android.ext.flutter = [
-                compileSdkVersion: 35,
-                minSdkVersion: 26,
-                targetSdkVersion: 35,
-                ndkVersion: "27.0.12077973"
-            ]
-        } catch (Exception ignored) {}
+            try {
+                subproject.ext.flutter = [
+                    compileSdkVersion: 35,
+                    minSdkVersion: 26,
+                    targetSdkVersion: 35,
+                    ndkVersion: "27.0.12077973"
+                ]
+            } catch (Exception ignored) {}
 
-        try {
-            subproject.ext.flutter = [
-                compileSdkVersion: 35,
-                minSdkVersion: 26,
-                targetSdkVersion: 35,
-                ndkVersion: "27.0.12077973"
-            ]
-        } catch (Exception ignored) {}
-
-        try {
-            subproject.android.compileSdk = 35
-        } catch (Exception ignored) {}
-    }
-
-    subproject.plugins.withId("com.android.application") {
-        try {
-            subproject.android.compileSdk = 35
-        } catch (Exception ignored) {}
+            try {
+                subproject.android.compileSdk = 35
+            } catch (Exception ignored) {}
+        }
     }
 }
 
