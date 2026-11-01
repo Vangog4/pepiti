@@ -25,6 +25,7 @@ from app.bot.keyboards.main_menu import (
     get_settings_keyboard,
 )
 from app.bot.keyboards.training import get_task_keyboard, get_week_day_keyboard
+from app.bot.window import replace_window
 from app.core.config import settings
 from app.core.container import AppContainer
 from app.core.context import current_tg_id
@@ -167,12 +168,12 @@ async def show_menu(
     pet = await p_svc.get_pet(usr.id)
     streak = await streak_for(act_repo, pet, usr) if pet else 0
     lang = normalize_locale(usr.language_code)
-    await msg.answer(
+    await replace_window(
+        msg,
+        usr,
+        u_svc.repo.session,
         _menu_text(streak, lang),
-        reply_markup=get_main_menu(
-            has_premium(usr), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
-        ),
-        parse_mode="HTML",
+        get_main_menu(has_premium(usr), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang),
     )
 
 
@@ -197,6 +198,9 @@ async def back_to_main(
         ),
         parse_mode="HTML",
     )
+    if usr.ui_message_id != cb.message.message_id:  # this message is the window now
+        usr.ui_message_id = cb.message.message_id
+        await u_svc.repo.session.commit()
     await cb.answer()
 
 

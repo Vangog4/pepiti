@@ -6,6 +6,7 @@ from dependency_injector.wiring import Provide, inject
 
 from app.bot.keyboards.main_menu import get_main_menu
 from app.bot.states.onboarding import OnboardingStates
+from app.bot.window import replace_window
 from app.core.config import settings
 from app.core.container import AppContainer
 from app.i18n import normalize_locale, t
@@ -95,11 +96,13 @@ async def cmd_start(
                 parse_mode="HTML",
             )
             return
-        await message.answer(
+        await replace_window(
+            message,
+            user,
+            user_service.repo.session,
             t("onboarding.start.returning", lang, name=user.first_name),
-            reply_markup=get_main_menu(
-                has_premium(user), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
-            ),
+            get_main_menu(has_premium(user), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang),
+            parse_mode=None,
         )
         return
 
