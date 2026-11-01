@@ -11,6 +11,7 @@ from app.infrastructure.db.repositories.pet_repo import PetRepository
 from app.infrastructure.db.repositories.subscription_repo import SubscriptionRepository
 from app.infrastructure.db.repositories.training_repo import TrainingPlanRepository
 from app.infrastructure.db.repositories.user_repo import UserRepository
+from app.infrastructure.db.repositories.weight_repo import WeightRepository
 from app.infrastructure.db.session import create_session_factory, get_current_session
 from app.infrastructure.redis.admin_log import AdminLog
 from app.infrastructure.redis.ai_rate_limit import AiRateLimiter
@@ -45,6 +46,7 @@ class AppContainer(containers.DeclarativeContainer):
     # Репозитории
     user_repo = providers.Factory(UserRepository, session=db_session)
     pet_repo = providers.Factory(PetRepository, session=db_session)
+    weight_repo = providers.Factory(WeightRepository, session=db_session)
     activity_repo = providers.Factory(ActivityRepository, session=db_session)
     health_repo = providers.Factory(HealthRepository, session=db_session)
     pet_fact_repo = providers.Factory(PetFactRepository, session=db_session)

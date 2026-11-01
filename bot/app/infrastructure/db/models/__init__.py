@@ -9,3 +9,4 @@ from app.infrastructure.db.models.pet_fact import PetFactModel  # noqa: F401
 from app.infrastructure.db.models.subscription import SubscriptionModel  # noqa: F401
 from app.infrastructure.db.models.training import TrainingPlanModel, TrainingTaskModel  # noqa: F401
 from app.infrastructure.db.models.user import UserModel  # noqa: F401
+from app.infrastructure.db.models.weight_log import WeightLogModel  # noqa: F401

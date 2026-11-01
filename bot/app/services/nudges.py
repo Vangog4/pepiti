@@ -312,3 +312,54 @@ async def send_winback(
             except Exception as e:
                 logger.warning("winback to %s failed: %s", user.telegram_id, e)
     return sent
+
+
+async def send_weigh_in_nudges(
+    session_factory: Any, bot: Any, guard: Any, now_utc: datetime | None = None
+) -> int:
+    """Remind to weigh the dog when the last weigh-in is older than ``weight.remind_days``."""
+    from sqlalchemy import func
+
+    from app.infrastructure.db.models.weight_log import WeightLogModel
+
+    now_utc = now_utc or datetime.now(UTC)
+    remind_days = int(rule("weight.remind_days", 30))
+    sent = 0
+    async with session_factory() as session:
+        for user in await due_users(session, now_utc):
+            pet = await _first_pet(session, user.id)
+            if pet is None:
+                continue
+            last = (
+                await session.execute(
+                    select(func.max(WeightLogModel.local_date)).where(
+                        WeightLogModel.pet_id == pet.id
+                    )
+                )
+            ).scalar()
+            today = local_now(user.timezone, now_utc).date()
+            if last is not None and (today - last).days < remind_days:
+                continue
+            if not await guard.first(f"weigh:{pet.id}:{last or 'none'}", (remind_days - 5) * 86400):
+                continue
+            lang = normalize_locale(user.language_code)
+            kb = types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        types.InlineKeyboardButton(
+                            text=t("weight.btn", lang), callback_data="wt_open"
+                        )
+                    ]
+                ]
+            )
+            try:
+                await bot.send_message(
+                    user.telegram_id,
+                    t("weight.nudge", lang, pet=pet.name),
+                    reply_markup=kb,
+                    parse_mode="HTML",
+                )
+                sent += 1
+            except Exception as e:
+                logger.warning("weigh-in nudge to %s failed: %s", user.telegram_id, e)
+    return sent

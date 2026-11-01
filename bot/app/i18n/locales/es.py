@@ -450,6 +450,15 @@ STRINGS: dict[str, str] = {
     "gift.invoice.description": "Premium para {name}, {days} días",
     "gift.sent": "🎁 ¡Listo! {name} recibió Premium por {days} días.",
     "gift.received": "🎁 ¡Te regalaron Premium por {days} días! Preguntas ilimitadas, memoria y tarjetas ya funcionan.",
+    "weight.btn": "⚖️ Peso",
+    "weight.empty": "⚖️ Aún no hay peso registrado para <b>{name}</b>.",
+    "weight.title": "⚖️ <b>{name}</b>: {kg} kg",
+    "weight.change": "En un mes: {delta} kg ({pct}%), antes {prev} kg",
+    "weight.alert.gain": "⚠️ El peso subió más de un 10% en un mes. Llévalo al veterinario.",
+    "weight.alert.loss": "⚠️ El peso bajó más de un 10% en un mes. Llévalo al veterinario.",
+    "weight.ask": "Envía el nuevo peso en kg, p. ej. 12,5",
+    "weight.saved": "✅ Guardado: {kg} kg",
+    "weight.nudge": "⚖️ Toca pesar a {pet}: una vez al mes basta. Son 10 segundos.",
     "premium.refunded": (
         "✔ Tu reembolso ha sido procesado. Suscripción Premium desactivada.\n"
         "Si esto es un error, por favor contacta al soporte."

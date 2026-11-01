@@ -473,6 +473,15 @@ STRINGS: dict[str, str] = {
     "gift.invoice.description": "Premium для {name} на {days} дн.",
     "gift.sent": "🎁 Готово! {name} получил(а) Premium на {days} дн.",
     "gift.received": "🎁 Тебе подарили Premium на {days} дн.! Безлимит вопросов, память и карточки уже работают.",
+    "weight.btn": "⚖️ Вес",
+    "weight.empty": "⚖️ Веса <b>{name}</b> пока нет в журнале.",
+    "weight.title": "⚖️ <b>{name}</b>: {kg} кг",
+    "weight.change": "За месяц: {delta} кг ({pct}%), было {prev} кг",
+    "weight.alert.gain": "⚠️ Вес вырос больше чем на 10% за месяц. Покажи собаку ветеринару.",
+    "weight.alert.loss": "⚠️ Вес упал больше чем на 10% за месяц. Покажи собаку ветеринару.",
+    "weight.ask": "Пришли новый вес в кг, например 12,5",
+    "weight.saved": "✅ Записал: {kg} кг",
+    "weight.nudge": "⚖️ Пора взвесить {pet}: раз в месяц достаточно. Это 10 секунд.",
     "premium.refunded": (
         "✔ Возврат средств обработан. Подписка Premium деактивирована.\n"
         "Если это ошибка — обратись в поддержку."

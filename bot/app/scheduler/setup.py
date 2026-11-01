@@ -17,6 +17,7 @@ from app.services.nudges import (
     send_evening_nudges,
     send_renewal_reminders,
     send_seasonal_nudges,
+    send_weigh_in_nudges,
     send_winback,
 )
 from app.services.payment_reconcile import reconcile_stars
@@ -64,6 +65,7 @@ def create_scheduler(session_factory: async_sessionmaker, bot: Bot) -> AsyncIOSc
         (send_evening_nudges, "evening_nudge"),
         (send_seasonal_nudges, "seasonal_nudges"),
         (send_winback, "winback"),
+        (send_weigh_in_nudges, "weigh_in_nudge"),
     ):
         scheduler.add_job(
             job,

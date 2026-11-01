@@ -71,6 +71,7 @@ def health_kb(lang: str) -> types.InlineKeyboardMarkup:
             types.InlineKeyboardButton(text=kind_label(k, lang)[:14], callback_data=f"hl_add:{k}")
             for k in KINDS
         ],
+        [types.InlineKeyboardButton(text=t("weight.btn", lang), callback_data="wt_open")],
         [
             types.InlineKeyboardButton(
                 text=t("common.back_menu.btn", lang), callback_data="menu_main"
