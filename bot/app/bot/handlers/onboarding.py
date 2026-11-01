@@ -64,46 +64,54 @@ async def _finish_onboarding(
     )
     await pet_svc.repo.create(pet)
 
-    user.onboarding_completed_at = datetime.utcnow()
-    referrer_tid = state_data.get("referrer_telegram_id")
-    if referrer_tid and not user.referrer_telegram_id:
-        user.referrer_telegram_id = referrer_tid
+    adding = bool(state_data.get("adding_pet"))
+    if adding:
+        # An extra dog: no referral, no "new user" ping, no welcome. Just make it the active one.
+        user.active_pet_id = pet.id
+        await user_svc.repo.session.commit()
+        await state.clear()
+        await msg.answer(t("pets.added", lang, name=pet.name), parse_mode="HTML")
+    else:
+        user.onboarding_completed_at = datetime.utcnow()
+        referrer_tid = state_data.get("referrer_telegram_id")
+        if referrer_tid and not user.referrer_telegram_id:
+            user.referrer_telegram_id = referrer_tid
 
-    await user_svc.repo.session.commit()
-    referral_result = await ref_svc.award_if_eligible(user)
-    if referral_result.base_awarded:
-        await notify_referrer(
-            msg.bot, referral_result, normalize_locale(referral_result.referrer_lang)
+        await user_svc.repo.session.commit()
+        referral_result = await ref_svc.award_if_eligible(user)
+        if referral_result.base_awarded:
+            await notify_referrer(
+                msg.bot, referral_result, normalize_locale(referral_result.referrer_lang)
+            )
+        await state.clear()
+
+        # Notify admins about new user
+        uname = "@" + user.username if user.username else "—"
+        ref_note = "\nПришёл по реферальной ссылке" if referral_result.base_awarded else ""
+        notify_text = (
+            f"🐾 <b>Новый пользователь!</b>\n"
+            f"{user.first_name or '—'} ({uname})\n"
+            f"ID: <code>{user.telegram_id}</code>{ref_note}"
         )
-    await state.clear()
+        for admin_id in settings.ADMIN_TELEGRAM_IDS:
+            try:
+                await msg.bot.send_message(chat_id=admin_id, text=notify_text, parse_mode="HTML")
+            except Exception:
+                pass
 
-    # Notify admins about new user
-    uname = "@" + user.username if user.username else "—"
-    ref_note = "\nПришёл по реферальной ссылке" if referral_result.base_awarded else ""
-    notify_text = (
-        f"🐾 <b>Новый пользователь!</b>\n"
-        f"{user.first_name or '—'} ({uname})\n"
-        f"ID: <code>{user.telegram_id}</code>{ref_note}"
-    )
-    for admin_id in settings.ADMIN_TELEGRAM_IDS:
-        try:
-            await msg.bot.send_message(chat_id=admin_id, text=notify_text, parse_mode="HTML")
-        except Exception:
-            pass
+        welcome = t("onboarding.done.welcome", lang, name=user.first_name, pet=pet.name)
+        if referral_result.base_awarded:
+            welcome += t("onboarding.done.referral_bonus", lang, days=REFERRAL_BONUS_DAYS)
+        if referral_result.milestone:
+            m = referral_result.milestone
+            welcome += t(
+                "onboarding.done.milestone",
+                lang,
+                label=milestone_label(m, lang),
+                reward=milestone_reward(m, lang),
+            )
 
-    welcome = t("onboarding.done.welcome", lang, name=user.first_name, pet=pet.name)
-    if referral_result.base_awarded:
-        welcome += t("onboarding.done.referral_bonus", lang, days=REFERRAL_BONUS_DAYS)
-    if referral_result.milestone:
-        m = referral_result.milestone
-        welcome += t(
-            "onboarding.done.milestone",
-            lang,
-            label=milestone_label(m, lang),
-            reward=milestone_reward(m, lang),
-        )
-
-    await msg.answer(welcome, parse_mode="HTML")
+        await msg.answer(welcome, parse_mode="HTML")
 
     loading = await msg.answer(
         t("onboarding.done.plan_loading", lang, pet=pet.name),

@@ -489,22 +489,9 @@ async def toggle_task(
 # ─── profile ─────────────────────────────────────────────────────────────────
 
 
-@router.callback_query(F.data == "menu_profile")
-@inject
-async def show_profile(
-    cb: types.CallbackQuery,
-    state: FSMContext,
-    u_svc: UserService = Provide[AppContainer.user_service],
-    p_svc: PetService = Provide[AppContainer.pet_service],
-) -> None:
-    await state.clear()
-    await cb.answer()
-    usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
-    lang = normalize_locale(usr.language_code)
-    pet = await p_svc.get_pet(usr.id)
-    if not pet:
-        await cb.message.edit_text(t("error.no_pet", lang), reply_markup=get_back_keyboard(lang))
-        return
+def build_profile_view(pet, pets: list, usr, lang: str):
+    """Profile text + keyboard (pure). ``pets`` = all of the owner's dogs, for the switcher."""
+    from app.services.pets import allowed_pets
 
     weight = (
         f"{pet.weight_kg} {t('profile.weight.unit', lang)}"
@@ -532,27 +519,64 @@ async def show_profile(
             else ""
         )
     )
-    kb = types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                types.InlineKeyboardButton(
-                    text=t("profile.edit.btn", lang), callback_data="menu_edit_profile"
-                ),
-                types.InlineKeyboardButton(text=t("memory.btn", lang), callback_data="menu_memory"),
-            ],
-            [
-                types.InlineKeyboardButton(
-                    text=t("profile.card.btn", lang), callback_data="card:passport"
-                ),
-                types.InlineKeyboardButton(text=t("profile.pdf.btn", lang), callback_data="pf_pdf"),
-            ],
-            [
-                types.InlineKeyboardButton(
-                    text=t("common.back_menu.btn", lang), callback_data="menu_main"
+    rows = []
+    if len(pets) > 1:
+        usable = {p.id for p in allowed_pets(pets, has_premium(usr))}
+        switcher = []
+        for p in sorted(pets, key=lambda x: x.id):
+            if p.id not in usable:
+                switcher.append(
+                    types.InlineKeyboardButton(text=f"🔒 {p.name}"[:14], callback_data="pet_locked")
                 )
-            ],
-        ]
-    )
+            else:
+                mark = "✓ " if p.id == pet.id else ""
+                switcher.append(
+                    types.InlineKeyboardButton(
+                        text=f"{mark}{p.name}"[:14], callback_data=f"pet_sw:{p.id}"
+                    )
+                )
+        rows += [switcher[i : i + 3] for i in range(0, len(switcher), 3)]
+    rows += [
+        [
+            types.InlineKeyboardButton(
+                text=t("profile.edit.btn", lang), callback_data="menu_edit_profile"
+            ),
+            types.InlineKeyboardButton(text=t("memory.btn", lang), callback_data="menu_memory"),
+        ],
+        [
+            types.InlineKeyboardButton(
+                text=t("profile.card.btn", lang), callback_data="card:passport"
+            ),
+            types.InlineKeyboardButton(text=t("profile.pdf.btn", lang), callback_data="pf_pdf"),
+        ],
+        [types.InlineKeyboardButton(text=t("pets.add.btn", lang), callback_data="pet_add")],
+        [
+            types.InlineKeyboardButton(
+                text=t("common.back_menu.btn", lang), callback_data="menu_main"
+            )
+        ],
+    ]
+    return text, types.InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+@router.callback_query(F.data == "menu_profile")
+@inject
+async def show_profile(
+    cb: types.CallbackQuery,
+    state: FSMContext,
+    u_svc: UserService = Provide[AppContainer.user_service],
+    p_svc: PetService = Provide[AppContainer.pet_service],
+) -> None:
+    await state.clear()
+    await cb.answer()
+    usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
+    lang = normalize_locale(usr.language_code)
+    pet = await p_svc.get_pet(usr.id)
+    if not pet:
+        await cb.message.edit_text(t("error.no_pet", lang), reply_markup=get_back_keyboard(lang))
+        return
+
+    text, kb = build_profile_view(pet, await p_svc.list_pets(usr.id), usr, lang)
     await cb.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 

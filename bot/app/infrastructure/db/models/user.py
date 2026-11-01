@@ -45,6 +45,7 @@ class UserModel(Base):
         ),
         nullable=True,
     )
+    active_pet_id = Column(Integer, nullable=True)  # which dog the owner is working with
     notify_seasonal = Column(Boolean, nullable=False, default=True, server_default=text("true"))
     media_trial_used_at = Column(DateTime, nullable=True)  # one free photo/voice analysis
     weekly_report_sent_on = Column(Date, nullable=True)  # user's local date of last report

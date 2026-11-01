@@ -182,5 +182,9 @@
     "season_send_day": 5,
     "winback_days_after": 3,
     "season_dedup_days": 40
+  },
+  "pets": {
+    "free_max": 1,
+    "premium_max": 3
   }
 }

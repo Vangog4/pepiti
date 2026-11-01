@@ -435,6 +435,12 @@ STRINGS: dict[str, str] = {
     "pdf.passport.facts": "Lo que se sabe del perro",
     "pdf.passport.disclaimer": "Generado el {date} por Pepito (@pepitopetbot) con datos del dueño. No es un documento médico.",
     "voice_action.walk": "🚶 Paseo guardado: {m} min. Racha: {n} días.",
+    "pets.add.btn": "➕ Perro",
+    "pets.limit.free": "🐶 Free incluye un perro. Premium permite hasta {n}, cada uno con su pasaporte, plan y memoria.",
+    "pets.limit.max": "Máximo {n} perros.",
+    "pets.switched": "Ahora con {name}",
+    "pets.added": "🐶 ¡{name} añadido! Preparo el primer plan…",
+    "pets.locked": "Este perro requiere Premium (hasta {n} perros). Tus datos se conservan.",
     "premium.refunded": (
         "✔ Tu reembolso ha sido procesado. Suscripción Premium desactivada.\n"
         "Si esto es un error, por favor contacta al soporte."

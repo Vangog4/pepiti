@@ -8,3 +8,6 @@ class PetService:
 
     async def get_pet(self, user_id: int) -> PetModel | None:
         return await self.repo.get_by_user_id(user_id)
+
+    async def list_pets(self, user_id: int) -> list[PetModel]:
+        return await self.repo.list_for_user(user_id)

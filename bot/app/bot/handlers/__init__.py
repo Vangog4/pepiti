@@ -8,6 +8,7 @@ from app.bot.handlers.help import router as help_router
 from app.bot.handlers.memory import router as memory_router
 from app.bot.handlers.menu import router as menu_router
 from app.bot.handlers.onboarding import router as onboarding_router
+from app.bot.handlers.pets import router as pets_router
 from app.bot.handlers.reset import router as reset_router
 from app.bot.handlers.start import router as start_router
 from app.bot.handlers.subscription import router as subscription_router
@@ -21,6 +22,7 @@ def setup_routers(dp: Dispatcher) -> None:
     dp.include_router(health_router)
     dp.include_router(tracker_router)
     dp.include_router(cards_router)
+    dp.include_router(pets_router)
     dp.include_router(memory_router)  # before menu: its FSM catch-alls must not shadow it
     dp.include_router(menu_router)
     dp.include_router(edit_profile_router)
