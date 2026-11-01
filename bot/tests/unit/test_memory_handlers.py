@@ -111,4 +111,4 @@ def test_single_alembic_head():
             revs.add(r.group(1))
         if d:
             downs.add(d.group(1))
-    assert revs - downs == {"b8c9d0e1f2a3"}
+    assert len(revs - downs) == 1, f"multiple alembic heads: {revs - downs}"

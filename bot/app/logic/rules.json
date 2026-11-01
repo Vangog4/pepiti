@@ -104,5 +104,14 @@
       "days": 365,
       "recurring": false
     }
+  },
+  "health": {
+    "intervals": {
+      "vaccine": 365,
+      "ticks": 30,
+      "worms": 90
+    },
+    "remind_days_before": 3,
+    "snooze_days": 3
   }
 }
