@@ -539,7 +539,8 @@ async def show_profile(
             [
                 types.InlineKeyboardButton(
                     text=t("profile.card.btn", lang), callback_data="card:passport"
-                )
+                ),
+                types.InlineKeyboardButton(text=t("profile.pdf.btn", lang), callback_data="pf_pdf"),
             ],
             [
                 types.InlineKeyboardButton(

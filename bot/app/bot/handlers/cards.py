@@ -1,6 +1,7 @@
 """📤 Story cards: streak, badge, weekly summary, dog passport. Sent as a document so the
 2x PNG is not recompressed by Telegram."""
 
+import asyncio
 import logging
 
 from aiogram import F, Router, types
@@ -13,7 +14,10 @@ from app.core.container import AppContainer
 from app.core.tz_utils import local_now
 from app.i18n import normalize_locale, t
 from app.infrastructure.db.repositories.activity_repo import ActivityRepository
+from app.infrastructure.db.repositories.health_repo import HealthRepository
+from app.infrastructure.db.repositories.pet_fact_repo import PetFactRepository
 from app.services.entitlements import has_premium
+from app.services.passport_pdf import MAX_FACTS, generate_passport_pdf, passport_pdf_data
 from app.services.pet_service import PetService
 from app.services.tracker import snapshot
 from app.services.user_service import UserService
@@ -77,4 +81,38 @@ async def send_card(
     await cb.message.answer_document(
         types.BufferedInputFile(png, filename=f"pepito-{kind}.png"),
         caption=t("card.caption", lang),
+    )
+
+
+@router.callback_query(F.data == "pf_pdf")
+@inject
+async def send_passport_pdf(
+    cb: types.CallbackQuery,
+    u_svc: UserService = Provide[AppContainer.user_service],
+    p_svc: PetService = Provide[AppContainer.pet_service],
+    health: HealthRepository = Provide[AppContainer.health_repo],
+    facts: PetFactRepository = Provide[AppContainer.pet_fact_repo],
+) -> None:
+    usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
+    lang = normalize_locale(usr.language_code)
+    pet = await p_svc.get_pet(usr.id)  # always the caller's own dog
+    if not pet:
+        await cb.answer()
+        return
+    await cb.answer(t("pdf.drawing", lang))
+    try:
+        data = passport_pdf_data(
+            pet,
+            await health.for_pet(pet.id),
+            [f.fact for f in await facts.list_active(pet.id, MAX_FACTS)],
+            local_now(usr.timezone).date(),
+        )
+        pdf = await asyncio.to_thread(generate_passport_pdf, data, lang)
+    except Exception:
+        logger.exception("passport pdf failed")
+        await cb.message.answer(t("card.error", lang))
+        return
+    await cb.message.answer_document(
+        types.BufferedInputFile(pdf, filename=f"pepito-passport-{pet.id}.pdf"),
+        caption=t("pdf.caption", lang),
     )
