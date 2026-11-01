@@ -3,6 +3,7 @@ from aiogram import Dispatcher
 from app.bot.handlers.admin import router as admin_router
 from app.bot.handlers.cards import router as cards_router
 from app.bot.handlers.edit_profile import router as edit_profile_router
+from app.bot.handlers.gift import router as gift_router
 from app.bot.handlers.health import router as health_router
 from app.bot.handlers.help import router as help_router
 from app.bot.handlers.memory import router as memory_router
@@ -23,6 +24,7 @@ def setup_routers(dp: Dispatcher) -> None:
     dp.include_router(tracker_router)
     dp.include_router(cards_router)
     dp.include_router(pets_router)
+    dp.include_router(gift_router)
     dp.include_router(memory_router)  # before menu: its FSM catch-alls must not shadow it
     dp.include_router(menu_router)
     dp.include_router(edit_profile_router)

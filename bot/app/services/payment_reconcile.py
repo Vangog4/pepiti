@@ -13,7 +13,7 @@ from typing import Any
 
 from app.i18n import normalize_locale, t
 from app.infrastructure.redis.funnel import track_soon
-from app.services.products import get_product
+from app.services.gifts import parse_payload, target_telegram_id
 
 logger = logging.getLogger(__name__)
 
@@ -72,24 +72,26 @@ async def recover(
     """Grant every genuinely paid, still-unknown payment. Returns how many were granted."""
     granted = 0
     for p in payments:
-        product = get_product(p.payload)
-        if product is None or p.amount != product.stars:
+        parsed = parse_payload(p.payload)
+        if parsed is None or p.amount != parsed.product.stars:
             logger.warning(
                 "reconcile: skip %s (payload=%r amount=%s)", p.charge_id, p.payload, p.amount
             )
             continue
+        product = parsed.product
+        target_tg = target_telegram_id(parsed, p.telegram_id)
         try:
             if await sub_repo.get_by_charge_id(p.charge_id):
                 continue
-            user = await user_repo.get_by_telegram_id(p.telegram_id)
+            user = await user_repo.get_by_telegram_id(target_tg)
             if user is None:
                 logger.warning(
-                    "reconcile: paid charge %s from unknown user %s", p.charge_id, p.telegram_id
+                    "reconcile: paid charge %s for unknown user %s", p.charge_id, target_tg
                 )
                 continue
             await sub_svc.activate(
                 user_id=user.id,
-                telegram_id=p.telegram_id,
+                telegram_id=target_tg,
                 charge_id=p.charge_id,
                 days=product.days,
                 plan_code=product.code,
@@ -99,17 +101,16 @@ async def recover(
             continue
         granted += 1
         track_soon("paid", p.telegram_id)
-        logger.warning(
-            "reconcile: RECOVERED lost payment %s for user %s", p.charge_id, p.telegram_id
-        )
+        logger.warning("reconcile: RECOVERED lost payment %s for user %s", p.charge_id, target_tg)
         try:
+            key = "gift.received" if parsed.is_gift else "premium.activated"
             await bot.send_message(
-                p.telegram_id,
-                t("premium.activated", normalize_locale(user.language_code)),
+                target_tg,
+                t(key, normalize_locale(user.language_code), days=product.days, name=""),
                 parse_mode="HTML",
             )
         except Exception:
-            logger.info("reconcile: could not notify %s", p.telegram_id)
+            logger.info("reconcile: could not notify %s", target_tg)
     return granted
 
 

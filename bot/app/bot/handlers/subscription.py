@@ -12,8 +12,10 @@ from app.core.context import current_tg_id
 from app.i18n import normalize_locale, t
 from app.infrastructure.db.models.user import UserModel
 from app.infrastructure.db.repositories.subscription_repo import SubscriptionRepository
+from app.infrastructure.db.repositories.user_repo import UserRepository
 from app.infrastructure.redis.funnel import track_soon
 from app.services.entitlements import has_premium
+from app.services.gifts import parse_payload, target_telegram_id
 from app.services.products import PRODUCTS, STARS_SUBSCRIPTION_PERIOD, get_product
 from app.services.subscription_service import SubscriptionService
 from app.services.user_service import UserService
@@ -73,6 +75,7 @@ def _plans_keyboard(lang: str) -> types.InlineKeyboardMarkup:
         ]
         for p in PRODUCTS.values()
     ]
+    rows.append([types.InlineKeyboardButton(text=t("gift.btn", lang), callback_data="gift_start")])
     rows.append(
         [
             types.InlineKeyboardButton(
@@ -128,18 +131,29 @@ async def send_invoice(
 
 
 @router.pre_checkout_query()
-async def pre_checkout(pcq: types.PreCheckoutQuery) -> None:
-    # Only accept known premium invoice payloads
-    product = get_product(pcq.invoice_payload)
-    if product is None:
+@inject
+async def pre_checkout(
+    pcq: types.PreCheckoutQuery,
+    user_repo: UserRepository = Provide[AppContainer.user_repo],
+) -> None:
+    """Telegram gives us 10 s: validate everything BEFORE the money moves."""
+    parsed = parse_payload(pcq.invoice_payload)
+    if parsed is None:
         await pcq.answer(ok=False, error_message="Unknown product")
         return
     if pcq.currency != "XTR":
         await pcq.answer(ok=False, error_message="Invalid currency")
         return
-    if pcq.total_amount != product.stars:
+    if pcq.total_amount != parsed.product.stars:
         await pcq.answer(ok=False, error_message="Invalid amount")
         return
+    if parsed.is_gift:
+        if parsed.recipient_tg_id == pcq.from_user.id:
+            await pcq.answer(ok=False, error_message="Cannot gift yourself")
+            return
+        if await user_repo.get_by_telegram_id(parsed.recipient_tg_id) is None:
+            await pcq.answer(ok=False, error_message="Recipient not found")
+            return
     await pcq.answer(ok=True)
 
 
@@ -151,31 +165,69 @@ async def successful_payment(
     sub_svc: SubscriptionService = Provide[AppContainer.subscription_service],
 ) -> None:
     payment = msg.successful_payment
-    product = get_product(payment.invoice_payload)
-    if product is None:
-        logger.warning(
-            "Ignoring successful_payment with payload=%s user=%s",
+    charge = payment.telegram_payment_charge_id
+    parsed = parse_payload(payment.invoice_payload)
+    if parsed is None:
+        # Stars were taken but the payload is unknown: make it loud so it can be refunded.
+        logger.error(
+            "UNKNOWN PAID PAYLOAD %r user=%s charge=%s: refund manually",
             payment.invoice_payload,
             msg.from_user.id,
+            charge,
         )
         return
 
-    usr = await u_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
+    payer = await u_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
     track_soon("paid", msg.from_user.id)
+    target_tg = target_telegram_id(parsed, msg.from_user.id)
+    target = (
+        payer if target_tg == msg.from_user.id else await u_svc.repo.get_by_telegram_id(target_tg)
+    )
+    if target is None:
+        logger.error(
+            "gift paid but recipient %s is gone: payer=%s charge=%s: refund manually",
+            target_tg,
+            msg.from_user.id,
+            charge,
+        )
+        return
+
     await sub_svc.activate(
-        user_id=usr.id,
-        telegram_id=msg.from_user.id,
-        charge_id=payment.telegram_payment_charge_id,
-        days=product.days,
-        plan_code=product.code,
+        user_id=target.id,
+        telegram_id=target_tg,
+        charge_id=charge,
+        days=parsed.product.days,
+        plan_code=parsed.product.code,
     )
     logger.info(
-        "Premium activated for user %s (charge %s)",
-        msg.from_user.id,
-        payment.telegram_payment_charge_id,
+        "Premium activated for user %s (charge %s, gift=%s)", target_tg, charge, parsed.is_gift
     )
-    lang = normalize_locale(usr.language_code)
-    await msg.answer(t("premium.activated", lang), parse_mode="HTML")
+    payer_lang = normalize_locale(payer.language_code)
+    if not parsed.is_gift:
+        await msg.answer(t("premium.activated", payer_lang), parse_mode="HTML")
+        return
+    await msg.answer(
+        t(
+            "gift.sent",
+            payer_lang,
+            name=getattr(target, "first_name", None) or "",
+            days=parsed.product.days,
+        ),
+        parse_mode="HTML",
+    )
+    try:
+        await msg.bot.send_message(
+            target_tg,
+            t(
+                "gift.received",
+                normalize_locale(target.language_code),
+                days=parsed.product.days,
+                name=msg.from_user.first_name or "",
+            ),
+            parse_mode="HTML",
+        )
+    except Exception:
+        logger.info("could not notify gift recipient %s", target_tg)
 
 
 @router.message(F.refunded_payment)

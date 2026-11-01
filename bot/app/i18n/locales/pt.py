@@ -439,6 +439,15 @@ STRINGS: dict[str, str] = {
     "pets.switched": "Agora com {name}",
     "pets.added": "🐶 {name} adicionado! Montando o primeiro plano…",
     "pets.locked": "Este cão exige Premium (até {n} cães). Seus dados ficam guardados.",
+    "gift.btn": "🎁 Presentear",
+    "gift.choose": "🎁 Presenteie um amigo com Premium. Escolha o período:",
+    "gift.ask_username": "Envie o @username do seu amigo. Ele já precisa usar o bot.",
+    "gift.notfound": "Não encontro esse usuário. Seu amigo precisa iniciar o bot primeiro; depois envie o @username de novo.",
+    "gift.self": "Você não pode presentear a si mesmo 🙂 Envie o @username de um amigo.",
+    "gift.invoice.title": "Presente: Premium",
+    "gift.invoice.description": "Premium para {name}, {days} dias",
+    "gift.sent": "🎁 Pronto! {name} recebeu Premium por {days} dias.",
+    "gift.received": "🎁 Você ganhou Premium por {days} dias! Perguntas ilimitadas, memória e cartões já estão ativos.",
     "premium.refunded": (
         "✔ Seu reembolso foi processado. Assinatura Premium desativada.\n"
         "Se isso for um erro, entre em contato com o suporte."
