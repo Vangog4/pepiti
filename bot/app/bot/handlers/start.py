@@ -9,6 +9,7 @@ from app.bot.states.onboarding import OnboardingStates
 from app.core.config import settings
 from app.core.container import AppContainer
 from app.i18n import normalize_locale, t
+from app.services.entitlements import has_premium
 from app.services.user_service import UserService
 
 router = Router(name="start_router")
@@ -66,7 +67,7 @@ async def cmd_start(
                     "🐾 <b>Вход в мобильное приложение Pepito подтвержден!</b>\n\n"
                     "Вы можете вернуться в приложение — данные синхронизированы.",
                     reply_markup=get_main_menu(
-                        user.is_premium, webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
+                        has_premium(user), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
                     ),
                     parse_mode="HTML",
                 )
@@ -89,7 +90,7 @@ async def cmd_start(
             await message.answer(
                 t("coach.entry", lang),
                 reply_markup=get_main_menu(
-                    user.is_premium, webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
+                    has_premium(user), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
                 ),
                 parse_mode="HTML",
             )
@@ -97,7 +98,7 @@ async def cmd_start(
         await message.answer(
             t("onboarding.start.returning", lang, name=user.first_name),
             reply_markup=get_main_menu(
-                user.is_premium, webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
+                has_premium(user), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
             ),
         )
         return

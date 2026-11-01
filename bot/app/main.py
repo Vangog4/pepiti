@@ -76,7 +76,7 @@ async def run_bot(container: AppContainer, bot: Bot) -> None:
     logger.info("Pepito Bot Worker & Scheduler started.")
 
     try:
-        await bot.delete_webhook(drop_pending_updates=True)
+        await bot.delete_webhook(drop_pending_updates=False)
         logger.info("Start polling")
         await dp.start_polling(bot)
     finally:
@@ -119,7 +119,7 @@ async def run_all(container: AppContainer, bot: Bot) -> None:
     )
 
     try:
-        await bot.delete_webhook(drop_pending_updates=True)
+        await bot.delete_webhook(drop_pending_updates=False)
         logger.info("Start polling")
         await dp.start_polling(bot)
     finally:

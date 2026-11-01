@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     # Web App — public HTTPS URL shown in Telegram WebAppInfo button.
     # Telegram requires HTTPS in production; leave empty to hide the button.
     WEBAPP_PUBLIC_URL: str = ""
+    SUPPORT_CONTACT: str = ""  # e.g. "@your_support"; shown in /paysupport when set
     # Internal bind address for the aiohttp HTTP server.
     WEBAPP_BIND_HOST: str = "0.0.0.0"
     WEBAPP_BIND_PORT: int = 8080

@@ -35,7 +35,7 @@ def create_scheduler(session_factory: async_sessionmaker, bot: Bot) -> AsyncIOSc
 
     scheduler.add_job(
         expire_subscriptions,
-        trigger=CronTrigger(hour=0, minute=5, timezone="UTC"),
+        trigger=CronTrigger(minute="*/10", timezone="UTC"),
         kwargs={"session_factory": session_factory},
         id="expire_subscriptions",
         replace_existing=True,
@@ -43,6 +43,6 @@ def create_scheduler(session_factory: async_sessionmaker, bot: Bot) -> AsyncIOSc
 
     logger.info(
         "Scheduler configured: daily_reminders (every minute, per-user time), "
-        "weekly_reports (Sun 18:00 UTC), expire_subscriptions (00:05 UTC)"
+        "weekly_reports (Sun 18:00 UTC), expire_subscriptions (every 10 min)"
     )
     return scheduler

@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from datetime import datetime, timedelta
 
@@ -10,6 +9,7 @@ from dependency_injector.wiring import Provide, inject
 
 from app.bot.filters.admin import IsAdmin
 from app.core.container import AppContainer
+from app.core.tasks import spawn
 from app.infrastructure.db.models.pet import PetModel
 from app.infrastructure.db.models.subscription import SubscriptionModel
 from app.infrastructure.db.repositories.user_repo import UserRepository
@@ -19,6 +19,7 @@ from app.infrastructure.redis.metrics import BotMetrics
 from app.logic.cascade import ModelCascade
 from app.logic.rules import rule
 from app.services.broadcast_service import run_broadcast
+from app.services.entitlements import has_premium
 
 logger = logging.getLogger(__name__)
 router = Router(name="admin_router")
@@ -268,9 +269,9 @@ async def lookup_user(
     pet = pet_result.scalar_one_or_none()
 
     premium_status = "❌ нет"
-    if user.is_premium and user.subscription_expires_at:
+    if has_premium(user) and user.subscription_expires_at:
         premium_status = f"✅ до {user.subscription_expires_at.strftime('%d.%m.%Y')}"
-    elif user.is_premium:
+    elif has_premium(user):
         premium_status = "✅ активен"
 
     onboard = (
@@ -436,4 +437,4 @@ async def broadcast_confirm(
     )
 
     await alog.log(cb.from_user.id, "broadcast", target_label, f"queued={len(telegram_ids)}")
-    asyncio.create_task(run_broadcast(cb.bot, telegram_ids, text, cb.from_user.id))
+    spawn(run_broadcast(cb.bot, telegram_ids, text, cb.from_user.id))

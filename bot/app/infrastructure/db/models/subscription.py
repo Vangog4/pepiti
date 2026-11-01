@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, func, text
 
 from app.infrastructure.db.models.base import Base
 
@@ -15,3 +15,12 @@ class SubscriptionModel(Base):
     starts_at = Column(DateTime, nullable=False, server_default=func.now())
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        Index(
+            "uq_subscriptions_charge_id",
+            "telegram_payment_charge_id",
+            unique=True,
+            postgresql_where=text("telegram_payment_charge_id IS NOT NULL"),
+        ),
+    )

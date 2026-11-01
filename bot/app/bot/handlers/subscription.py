@@ -1,14 +1,17 @@
 import logging
 
 from aiogram import F, Router, types
+from aiogram.filters import Command
 from dependency_injector.wiring import Provide, inject
 from sqlalchemy import update
 
 from app.bot.keyboards.main_menu import get_back_keyboard
+from app.core.config import settings
 from app.core.container import AppContainer
 from app.i18n import normalize_locale, t
 from app.infrastructure.db.models.user import UserModel
 from app.infrastructure.db.repositories.subscription_repo import SubscriptionRepository
+from app.services.entitlements import has_premium
 from app.services.subscription_service import PREMIUM_1M_STARS, SubscriptionService
 from app.services.user_service import UserService
 
@@ -41,7 +44,7 @@ async def show_premium(
     usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
     lang = normalize_locale(usr.language_code)
 
-    if usr.is_premium:
+    if has_premium(usr):
         sub = await sub_svc.get_active(usr.id)
         expires = sub.expires_at.strftime("%d.%m.%Y") if sub else "—"
         await cb.message.edit_text(
@@ -94,6 +97,9 @@ async def pre_checkout(pcq: types.PreCheckoutQuery) -> None:
         return
     if pcq.currency != "XTR":
         await pcq.answer(ok=False, error_message="Invalid currency")
+        return
+    if pcq.total_amount != PREMIUM_1M_STARS:
+        await pcq.answer(ok=False, error_message="Invalid amount")
         return
     await pcq.answer(ok=True)
 
@@ -164,3 +170,19 @@ async def refunded_payment(
     logger.info("Premium recalculated for user_id=%s after refund", sub.user_id)
     lang = normalize_locale(msg.from_user.language_code)
     await msg.answer(t("premium.refunded", lang), parse_mode="HTML")
+
+
+@router.message(Command("paysupport"))
+async def cmd_paysupport(msg: types.Message) -> None:
+    lang = normalize_locale(msg.from_user.language_code)
+    text = t("premium.paysupport", lang)
+    contact = (settings.SUPPORT_CONTACT or "").strip()
+    if contact:
+        text += f"\n\n{contact}"
+    await msg.answer(text, parse_mode="HTML")
+
+
+@router.message(Command("terms"))
+async def cmd_terms(msg: types.Message) -> None:
+    lang = normalize_locale(msg.from_user.language_code)
+    await msg.answer(t("premium.terms", lang), parse_mode="HTML")

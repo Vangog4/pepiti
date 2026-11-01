@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.i18n import normalize_locale, t
 from app.infrastructure.db.models.user import UserModel
+from app.services.entitlements import has_premium
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ async def send_weekly_reports(session_factory: async_sessionmaker, bot: Bot) -> 
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
             )
-            if user.is_premium:
+            if has_premium(user):
                 text = t("report.weekly.premium", lang, name=name, days=days)
             else:
                 text = t("report.weekly.free", lang, name=name, days=days)

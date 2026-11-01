@@ -7,6 +7,7 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel, ValidationError
 
+from app.core.tasks import spawn
 from app.infrastructure.db.models.pet import PetModel
 from app.infrastructure.redis.metrics import BotMetrics
 from app.logic.cascade import ModelCascade
@@ -37,6 +38,10 @@ _LANG_NAMES: dict[str, str] = {
     "es": "Spanish (Español)",
     "pt": "Portuguese (Português)",
 }
+
+
+class AiUnavailableError(RuntimeError):
+    """AI call failed. Handlers must show a generic message and must NOT charge quota."""
 
 
 def _lang_instruction(lang: str) -> str:
@@ -329,7 +334,10 @@ class AiService:
 
     async def _generate_text(self, *, kind: str, contents: Any) -> str:
         model = self._get_cascade().model_for(kind)
-        return await self._call_model(kind=kind, model=model, contents=contents)
+        raw = await self._call_model(kind=kind, model=model, contents=contents)
+        if not (raw or "").strip():
+            raise AiUnavailableError(f"empty response for {kind}")
+        return raw
 
     async def _generate_structured(
         self,
@@ -413,10 +421,7 @@ class AiService:
             logger.warning("forbidden phrase in AI output: %s", hit)
             # fire-and-forget metric when event loop is running (handlers always are)
             try:
-                import asyncio
-
-                loop = asyncio.get_running_loop()
-                loop.create_task(self._metric(BotMetrics.AI_FORBIDDEN))
+                spawn(self._metric(BotMetrics.AI_FORBIDDEN))
             except RuntimeError:
                 pass
             out = re.sub(
@@ -538,7 +543,8 @@ class AiService:
             raw = await self._generate_text(kind="explain_exercise", contents=prompt)
             return self._guard_html(raw, kind="explain_exercise")
         except Exception as e:
-            return f"⚠️ Explanation unavailable. Try again later.\n<i>{e}</i>"
+            logger.warning("AI call failed: %s", e)
+            raise AiUnavailableError(str(e)) from e
 
     async def analyze_media_question(
         self,
@@ -579,7 +585,8 @@ class AiService:
             raw = await self._generate_text(kind="media_analysis", contents=contents)
             return self._guard_html(raw, kind="media_analysis")
         except Exception as e:
-            return f"⚠️ Media analysis unavailable. Try again.\n<i>{e}</i>"
+            logger.warning("AI call failed: %s", e)
+            raise AiUnavailableError(str(e)) from e
 
     async def answer_coach_question(self, pet: PetModel, history: str, lang: str = "ru") -> str:
         breed = pet.breed or "unknown breed"
@@ -606,7 +613,8 @@ class AiService:
             raw = await self._generate_text(kind="coach_answer", contents=prompt)
             return self._guard_html(raw, kind="coach_answer")
         except Exception as e:
-            return f"⚠️ Trainer is busy. Try again later.\n<i>{e}</i>"
+            logger.warning("AI call failed: %s", e)
+            raise AiUnavailableError(str(e)) from e
 
     async def summarize_progress(self, pet: PetModel, training_days: int, lang: str = "ru") -> str:
         breed = pet.breed or "unknown breed"
@@ -632,7 +640,8 @@ class AiService:
             raw = await self._generate_text(kind="progress_summary", contents=prompt)
             return self._guard_html(raw, kind="progress_summary")
         except Exception as e:
-            return f"⚠️ Analysis unavailable. Try later.\n<i>{e}</i>"
+            logger.warning("AI call failed: %s", e)
+            raise AiUnavailableError(str(e)) from e
 
     async def premium_deep_analysis(
         self, pet: PetModel, training_days: int, lang: str = "ru"
@@ -667,7 +676,8 @@ class AiService:
             raw = await self._generate_text(kind="premium_deep", contents=prompt)
             return self._guard_html(raw, kind="premium_deep")
         except Exception as e:
-            return f"⚠️ Deep analysis unavailable. Try later.\n<i>{e}</i>"
+            logger.warning("AI call failed: %s", e)
+            raise AiUnavailableError(str(e)) from e
 
     async def extract_pet_profile(
         self,
@@ -861,6 +871,7 @@ class AiService:
             return {
                 "action": "none",
                 "message": "⚠️ Не удалось обработать. Попробуй ещё раз.",
+                "_is_fallback": True,
             }
 
     @staticmethod

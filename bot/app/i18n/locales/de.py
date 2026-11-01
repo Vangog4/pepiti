@@ -290,6 +290,8 @@ STRINGS: dict[str, str] = {
         "🎁 Personalisierte Leckerli-Empfehlungen\n\n"
         "Nutze /menu zum Starten."
     ),
+    "premium.paysupport": "💬 <b>Zahlungssupport</b>\n\nBezahlt, aber kein Premium? Rückerstattung nötig? Schreib dem Support mit der Zahlungs-ID aus deinem Telegram-Chat. Wir antworten binnen eines Tages.",
+    "premium.terms": "📄 <b>Bedingungen</b>\n\nPremium ist ein digitales Abo für den KI-Hundetrainer Pepito, bezahlt mit Telegram Stars. Es verlängert sich automatisch und lässt sich jederzeit in den Telegram-Einstellungen kündigen. Erstattung: /paysupport. Der Bot ersetzt keinen Tierarzt.",
     "premium.refunded": (
         "✔ Deine Rückerstattung wurde verarbeitet. Premium-Abonnement deaktiviert.\n"
         "Wenn das ein Fehler ist, wende dich bitte an den Support."

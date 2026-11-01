@@ -9,6 +9,7 @@ from app.api.routes import _validate_settings
 from app.api.v1.dependencies import get_current_user, get_db_session
 from app.api.v1.schemas.profile import ProfileResponse, ProfileUpdateRequest
 from app.infrastructure.db.models.user import UserModel
+from app.services.entitlements import has_premium
 
 router = APIRouter(prefix="/profile", tags=["User Profile"])
 
@@ -31,7 +32,7 @@ async def get_profile(
         language_code=current_user.language_code or "ru",
         timezone=current_user.timezone or "UTC",
         reminder_time=current_user.reminder_time,
-        is_premium=bool(current_user.is_premium),
+        is_premium=bool(has_premium(current_user)),
         subscription_expires_at=current_user.subscription_expires_at,
         training_days=current_user.training_days or 0,
         created_at=current_user.created_at,
@@ -84,7 +85,7 @@ async def update_profile(
         language_code=current_user.language_code or "ru",
         timezone=current_user.timezone or "UTC",
         reminder_time=current_user.reminder_time,
-        is_premium=bool(current_user.is_premium),
+        is_premium=bool(has_premium(current_user)),
         subscription_expires_at=current_user.subscription_expires_at,
         training_days=current_user.training_days or 0,
         created_at=current_user.created_at,

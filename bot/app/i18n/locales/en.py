@@ -285,6 +285,8 @@ STRINGS: dict[str, str] = {
         "🎁 Personalised treat recommendations\n\n"
         "Use /menu to get started."
     ),
+    "premium.paysupport": "💬 <b>Payment support</b>\n\nPaid but no Premium? Need a refund? Contact support with the payment ID from your Telegram chat. We reply within a day.",
+    "premium.terms": "📄 <b>Terms</b>\n\nPremium is a digital subscription to the Pepito AI dog trainer, paid in Telegram Stars. It renews automatically and can be cancelled any time in Telegram settings. Refunds: /paysupport. The bot does not replace a vet.",
     "premium.refunded": (
         "✔ Your refund has been processed. Premium subscription deactivated.\n"
         "If this is an error, please contact support."

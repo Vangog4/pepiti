@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import asyncio
+import logging
 import time
 from typing import Annotated
 
@@ -17,12 +17,16 @@ from app.api.v1.schemas.coach import (
     SendMessageResponse,
 )
 from app.core.config import settings
+from app.core.tasks import spawn
 from app.infrastructure.db.models.coach_thread import CoachThreadModel
 from app.infrastructure.db.models.pet import PetModel
 from app.infrastructure.db.models.user import UserModel
 from app.infrastructure.db.repositories.coach_thread_repo import CoachThreadRepository
 from app.services.ai_service import AiService
 from app.services.coach_service import CoachService
+from app.services.entitlements import has_premium
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/coach", tags=["AI Coach"])
 
@@ -159,7 +163,7 @@ async def send_coach_message(
     coach_svc = CoachService(repo)
     lang = current_user.language_code or "ru"
     context = coach_svc.build_prompt_context(
-        thread, is_premium=bool(current_user.is_premium), lang=lang
+        thread, is_premium=bool(has_premium(current_user)), lang=lang
     )
 
     history_with_q = (context + "\n" if context else "") + f"Владелец: {body.content}\n"
@@ -168,8 +172,8 @@ async def send_coach_message(
 
     rate_limiter = AiRateLimiter(settings.REDIS_URL)
     user_uid = current_user.telegram_id or current_user.id
-    if not current_user.is_premium:
-        if not await rate_limiter.is_allowed(user_uid):
+    if not has_premium(current_user):
+        if not await rate_limiter.reserve(user_uid, current_user.timezone):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Дневной лимит бесплатных запросов к кинологу исчерпан. Оформите Premium.",
@@ -183,13 +187,13 @@ async def send_coach_message(
     try:
         answer = await ai_service.answer_coach_question(pet, history_with_q, lang=lang)
     except Exception as e:
+        if not has_premium(current_user):
+            await rate_limiter.release(user_uid, current_user.timezone)
+        logger.warning("coach answer failed: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Не удалось получить ответ кинолога: {e}",
+            detail="Кинолог сейчас недоступен. Попробуй ещё раз чуть позже.",
         ) from e
-
-    if not current_user.is_premium:
-        await rate_limiter.increment(user_uid)
 
     now_ts = int(time.time())
     coach_svc.save_exchange(thread, body.content, answer)
@@ -208,7 +212,7 @@ async def send_coach_message(
                     th.title = await ai_service.generate_thread_title(body.content)
                     await s.commit()
 
-        asyncio.create_task(_gen_title())
+        spawn(_gen_title())
 
     return SendMessageResponse(
         thread_id=thread.id,
