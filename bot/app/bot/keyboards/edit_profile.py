@@ -85,6 +85,22 @@ def get_edit_profile_keyboard(lang: str = "ru") -> InlineKeyboardMarkup:
     )
     b.row(
         InlineKeyboardButton(
+            text=t("edit_profile.btn.weight", lang), callback_data="edit_field_weight_kg"
+        ),
+        InlineKeyboardButton(
+            text=t("edit_profile.btn.birth", lang), callback_data="edit_field_birth_date"
+        ),
+    )
+    b.row(
+        InlineKeyboardButton(
+            text=t("edit_profile.btn.allergies", lang), callback_data="edit_field_allergies"
+        ),
+        InlineKeyboardButton(
+            text=t("edit_profile.btn.chronic", lang), callback_data="edit_field_chronic_conditions"
+        ),
+    )
+    b.row(
+        InlineKeyboardButton(
             text=t("edit_profile.btn.timezone", lang), callback_data="edit_field_timezone"
         )
     )

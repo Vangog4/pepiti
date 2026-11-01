@@ -1,4 +1,17 @@
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    func,
+    text,
+)
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 
 from app.infrastructure.db.models.base import Base
@@ -24,6 +37,11 @@ class PetModel(Base):
     health_notes = Column(Text, nullable=True)
     training_schedule = Column(String, nullable=True)
     training_days = Column(Integer, default=0)
+    birth_date = Column(Date, nullable=True)
+    allergies = Column(ARRAY(String), nullable=True)
+    chronic_conditions = Column(ARRAY(String), nullable=True)
+    photo_file_id = Column(String, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True, server_default=text("true"))
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

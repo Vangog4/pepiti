@@ -173,3 +173,22 @@ class BreedGuess(BaseModel):
     is_dog: bool
     breed: str = Field(min_length=2, max_length=60)
     confidence: float = Field(ge=0.0, le=1.0)
+
+
+class Fact(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    text: str = Field(min_length=3, max_length=160)
+
+    @field_validator("text", mode="before")
+    @classmethod
+    def _strip(cls, v: Any) -> Any:
+        return v.strip() if isinstance(v, str) else v
+
+
+class FactExtraction(BaseModel):
+    """Durable facts about the dog extracted from one chat exchange (max 5)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    facts: list[Fact] = Field(default_factory=list, max_length=5)

@@ -14,6 +14,7 @@ from app.logic.cascade import ModelCascade
 from app.logic.rules import contains_forbidden, get_rules, rule
 from app.logic.schemas import (
     BreedGuess,
+    FactExtraction,
     PetProfileSchema,
     TrainingIntentSchema,
     TrainingPlanSchema,
@@ -589,7 +590,9 @@ class AiService:
             logger.warning("AI call failed: %s", e)
             raise AiUnavailableError(str(e)) from e
 
-    async def answer_coach_question(self, pet: PetModel, history: str, lang: str = "ru") -> str:
+    async def answer_coach_question(
+        self, pet: PetModel, history: str, lang: str = "ru", memory: str = ""
+    ) -> str:
         breed = pet.breed or "unknown breed"
         age = pet.age_category or "unknown age"
         goal = pet.goal or "general training"
@@ -597,7 +600,8 @@ class AiService:
         prompt = (
             f"You are a professional dog behaviourist and trainer. Consulting about:\n"
             f"<b>{pet.name}</b> — {breed}, {age}. Owner's goal: {goal}.\n\n"
-            f"CONVERSATION HISTORY:\n{history}\n\n"
+            + (f"WHAT YOU KNOW ABOUT THE DOG:\n{memory}\n\n" if memory else "")
+            + f"CONVERSATION HISTORY:\n{history}\n\n"
             "DEFAULT: answer in the structured format below. "
             "If a detail is missing, assume a typical case and state the assumption in one short clause "
             "(e.g. leash pulling → assume forward pulling on walks).\n"
@@ -797,6 +801,22 @@ class AiService:
         if guess is None or not guess.is_dog or guess.confidence < 0.5:
             return None
         return guess
+
+    async def extract_facts(self, question: str, answer: str, known: list[str]) -> list[str]:
+        """Durable facts about the dog from one exchange. Never raises; [] if nothing/AI down."""
+        prompt = (
+            "Extract DURABLE facts about the owner's dog from this chat exchange "
+            "(health, allergies, fears, habits, diet, routine, medication). "
+            "Skip generic advice, opinions and one-off events. Max 5, each under 120 chars, "
+            'same language as the owner. Return ONLY JSON: {"facts": [{"text": "..."}]}. '
+            'Return {"facts": []} if nothing durable.\n\n'
+            f"Already known: {'; '.join(known[:20]) or 'nothing'}\n"
+            f"OWNER: {question[:800]}\nTRAINER: {answer[:1200]}"
+        )
+        result = await self._generate_structured(
+            kind="extract_profile", contents=prompt, schema=FactExtraction
+        )
+        return [f.text for f in result.facts] if result else []
 
     async def detect_training_intent(
         self,

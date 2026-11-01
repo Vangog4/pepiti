@@ -33,11 +33,17 @@ from app.infrastructure.db.models.coach_thread import CoachThreadModel
 from app.infrastructure.db.models.training import TrainingPlanModel
 from app.infrastructure.db.repositories.ai_conversation_repo import AiConversationRepository
 from app.infrastructure.db.repositories.coach_thread_repo import CoachThreadRepository
+from app.infrastructure.db.repositories.pet_fact_repo import PetFactRepository
 from app.infrastructure.redis.ai_rate_limit import FREE_DAILY_LIMIT, AiRateLimiter
 from app.infrastructure.redis.metrics import BotMetrics
 from app.services.ai_service import AiService
 from app.services.coach_service import CoachService
 from app.services.entitlements import has_premium
+from app.services.pet_memory import (
+    MAX_FACTS_STORED,
+    merge_new_facts,
+    pet_memory_block,
+)
 from app.services.pet_service import PetService
 from app.services.referral_service import (
     REFERRAL_BONUS_DAYS,
@@ -467,13 +473,20 @@ async def show_profile(
         + t("profile.issues", lang, val=issues)
         + t("profile.schedule", lang, val=schedule)
         + t("profile.training_count", lang, n=pet.training_days or 0)
+        + (t("profile.allergies", lang, val=", ".join(pet.allergies)) if pet.allergies else "")
+        + (
+            t("profile.chronic", lang, val=", ".join(pet.chronic_conditions))
+            if pet.chronic_conditions
+            else ""
+        )
     )
     kb = types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
                     text=t("profile.edit.btn", lang), callback_data="menu_edit_profile"
-                )
+                ),
+                types.InlineKeyboardButton(text=t("memory.btn", lang), callback_data="menu_memory"),
             ],
             [
                 types.InlineKeyboardButton(
@@ -674,6 +687,22 @@ async def _bg_generate_title(thread_id: int, question: str, session_fac, a_svc: 
         logger.warning("thread title generation failed", exc_info=True)
 
 
+async def _bg_extract_facts(
+    pet_id: int, question: str, answer: str, session_fac, a_svc: AiService
+) -> None:
+    """Remember durable facts from one exchange. Never blocks or breaks the reply."""
+    try:
+        async with session_fac() as session:
+            repo = PetFactRepository(session)
+            known = [f.fact for f in await repo.list_active(pet_id, MAX_FACTS_STORED)]
+            new = merge_new_facts(known, await a_svc.extract_facts(question, answer, known))
+            room = MAX_FACTS_STORED - len(known)
+            if new and room > 0:
+                await repo.add_many(pet_id, new[:room], source="ai")
+    except Exception:
+        logger.warning("fact extraction failed", exc_info=True)
+
+
 async def _bg_refresh_summary(thread_id: int, session_fac, a_svc: AiService) -> None:
     try:
         async with session_fac() as session:
@@ -767,6 +796,7 @@ async def process_coach_question(
     rate_limiter: AiRateLimiter = Provide[AppContainer.ai_rate_limiter],
     coach_svc: CoachService = Provide[AppContainer.coach_service],
     session_fac=Provide[AppContainer.session_factory],
+    fact_repo: PetFactRepository = Provide[AppContainer.pet_fact_repo],
 ) -> None:
     if not msg.text or len(msg.text.strip()) < 2:
         return
@@ -816,7 +846,8 @@ async def process_coach_question(
 
     m = await msg.answer(t("coach.thinking", lang), parse_mode="HTML")
     try:
-        answer = await a_svc.answer_coach_question(pet, history_with_q, lang=lang)
+        memory = pet_memory_block(pet, [f.fact for f in await fact_repo.list_active(pet.id, 20)])
+        answer = await a_svc.answer_coach_question(pet, history_with_q, lang=lang, memory=memory)
     except Exception:
         if not has_premium(usr):
             await rate_limiter.release(msg.from_user.id, usr.timezone)
@@ -827,6 +858,8 @@ async def process_coach_question(
 
     coach_svc.save_exchange(thread, question, answer)
     await session.commit()
+
+    spawn(_bg_extract_facts(pet.id, question, answer, session_fac, a_svc), name="extract_facts")
 
     if coach_svc.should_generate_title(thread):
         spawn(_bg_generate_title(thread.id, question, session_fac, a_svc))
