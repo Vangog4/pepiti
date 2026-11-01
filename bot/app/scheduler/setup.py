@@ -1,15 +1,19 @@
 import logging
 from datetime import UTC, datetime
 
+import redis.asyncio as aioredis
 from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.core.config import settings
+from app.infrastructure.redis.once import OnceGuard
 from app.scheduler.jobs.expire_subscriptions import expire_subscriptions
 from app.scheduler.jobs.heartbeat import beat
 from app.scheduler.jobs.reminders import send_daily_reminders, send_health_reminders
 from app.scheduler.jobs.reports import send_weekly_reports
+from app.services.nudges import send_evening_nudges, send_renewal_reminders
 from app.services.payment_reconcile import reconcile_stars
 
 logger = logging.getLogger(__name__)
@@ -40,6 +44,20 @@ def create_scheduler(session_factory: async_sessionmaker, bot: Bot) -> AsyncIOSc
         id="daily_reminders",
         replace_existing=True,
     )
+
+    guard = OnceGuard(aioredis.from_url(settings.REDIS_URL))
+    for job, job_id in (
+        (send_renewal_reminders, "renewal_reminders"),
+        (send_evening_nudges, "evening_nudge"),
+    ):
+        scheduler.add_job(
+            job,
+            trigger=CronTrigger(minute="*", timezone="UTC"),
+            kwargs={"session_factory": session_factory, "bot": bot, "guard": guard},
+            id=job_id,
+            replace_existing=True,
+            max_instances=1,
+        )
 
     scheduler.add_job(
         send_health_reminders,

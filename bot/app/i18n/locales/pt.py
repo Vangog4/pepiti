@@ -398,6 +398,10 @@ STRINGS: dict[str, str] = {
     "tracker.card.week.btn": "📤 Semana",
     "tracker.card.badge.btn": "📤 Conquista",
     "profile.card.btn": "📤 Cartão",
+    "nudge.renew.soon": "⏳ O Premium termina em {n} dias ({date}). Renovar para {pet} manter respostas ilimitadas e a memória?",
+    "nudge.renew.last": "⏳ O Premium termina amanhã ({date}). Renove para manter as respostas ilimitadas e a memória de {pet}.",
+    "nudge.renew.btn": "⭐ Renovar",
+    "nudge.evening": "🔥 Sequência de {n} dias — hoje ainda não treinou com {pet}. 5 minutos mantêm viva!",
     "premium.refunded": (
         "✔ Seu reembolso foi processado. Assinatura Premium desativada.\n"
         "Se isso for um erro, entre em contato com o suporte."

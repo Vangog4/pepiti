@@ -165,5 +165,14 @@
       "it's important to note",
       "i hope this helps"
     ]
+  },
+  "nudges": {
+    "renewal_days_before": [
+      3,
+      1
+    ],
+    "evening_local_hour": 20,
+    "evening_min_streak": 2,
+    "dedup_ttl_days": 10
   }
 }
