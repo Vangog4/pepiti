@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.bot.handlers.help import build_help_text
+from app.bot.handlers.tracker import record_task_day, streak_for
 from app.bot.keyboards.edit_profile import translate_option
 from app.bot.keyboards.main_menu import (
     LANGUAGE_OPTIONS,
@@ -31,6 +32,7 @@ from app.core.tasks import spawn
 from app.i18n import normalize_locale, pluralize, t
 from app.infrastructure.db.models.coach_thread import CoachThreadModel
 from app.infrastructure.db.models.training import TrainingPlanModel
+from app.infrastructure.db.repositories.activity_repo import ActivityRepository
 from app.infrastructure.db.repositories.ai_conversation_repo import AiConversationRepository
 from app.infrastructure.db.repositories.coach_thread_repo import CoachThreadRepository
 from app.infrastructure.db.repositories.pet_fact_repo import PetFactRepository
@@ -151,13 +153,14 @@ async def show_menu(
     state: FSMContext,
     u_svc: UserService = Provide[AppContainer.user_service],
     p_svc: PetService = Provide[AppContainer.pet_service],
+    act_repo: ActivityRepository = Provide[AppContainer.activity_repo],
 ) -> None:
     await state.clear()
     tmp = await msg.answer("⌛️", reply_markup=types.ReplyKeyboardRemove())
     await tmp.delete()
     usr = await u_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
     pet = await p_svc.get_pet(usr.id)
-    streak = pet.training_days or 0 if pet else 0
+    streak = await streak_for(act_repo, pet, usr) if pet else 0
     lang = normalize_locale(usr.language_code)
     await msg.answer(
         _menu_text(streak, lang),
@@ -175,11 +178,12 @@ async def back_to_main(
     state: FSMContext,
     u_svc: UserService = Provide[AppContainer.user_service],
     p_svc: PetService = Provide[AppContainer.pet_service],
+    act_repo: ActivityRepository = Provide[AppContainer.activity_repo],
 ) -> None:
     await state.clear()
     usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
     pet = await p_svc.get_pet(usr.id)
-    streak = pet.training_days or 0 if pet else 0
+    streak = await streak_for(act_repo, pet, usr) if pet else 0
     lang = normalize_locale(usr.language_code)
     await cb.message.edit_text(
         _menu_text(streak, lang),
@@ -363,6 +367,7 @@ async def toggle_task(
     p_svc: PetService = Provide[AppContainer.pet_service],
     u_svc: UserService = Provide[AppContainer.user_service],
     t_svc: TrainingService = Provide[AppContainer.training_service],
+    act_repo: ActivityRepository = Provide[AppContainer.activity_repo],
 ) -> None:
     parts = cb.data.split(":")
     try:
@@ -390,6 +395,8 @@ async def toggle_task(
         return
 
     task, plan_done = await t_svc.toggle_task(task_id, pet)
+    if plan_done and task.is_completed:
+        await record_task_day(act_repo, pet, usr)
     if not answered:
         toast_key = (
             "training.task.toggle.done" if task.is_completed else "training.task.toggle.undone"
@@ -408,7 +415,7 @@ async def toggle_task(
     text = TrainingService.format_plan(plan, lang)
     share_btn = None
     if plan_done:
-        streak_n = pet.training_days or 1
+        streak_n = (await streak_for(act_repo, pet, usr)) or 1
         emoji = _streak_emoji(streak_n)
         days_word = pluralize(
             streak_n,
@@ -1216,6 +1223,7 @@ async def toggle_week_task(
     p_svc: PetService = Provide[AppContainer.pet_service],
     u_svc: UserService = Provide[AppContainer.user_service],
     t_svc: TrainingService = Provide[AppContainer.training_service],
+    act_repo: ActivityRepository = Provide[AppContainer.activity_repo],
 ) -> None:
     parts = cb.data.split(":")
     _, task_id_s, plan_id_s, day_s = parts[:4]
@@ -1245,6 +1253,8 @@ async def toggle_week_task(
         return
     lang = normalize_locale(usr.language_code)
     task, day_done = await t_svc.toggle_task(task_id, pet)
+    if day_done and task.is_completed:
+        await record_task_day(act_repo, pet, usr)
     if not answered:
         toast_key = (
             "training.task.toggle.done" if task.is_completed else "training.task.toggle.undone"
@@ -1263,7 +1273,7 @@ async def toggle_week_task(
     lang = normalize_locale(usr.language_code)
     text = TrainingService.format_week_day(plan, day, lang)
     if day_done and task.is_completed:
-        streak_n = pet.training_days or 1
+        streak_n = (await streak_for(act_repo, pet, usr)) or 1
         days_word = pluralize(
             streak_n,
             lang,
@@ -1862,6 +1872,7 @@ async def handle_voice_action(
     conv_repo: AiConversationRepository = Provide[AppContainer.ai_conversation_repo],
     rate_limiter: AiRateLimiter = Provide[AppContainer.ai_rate_limiter],
     metrics: BotMetrics = Provide[AppContainer.metrics],
+    act_repo: ActivityRepository = Provide[AppContainer.activity_repo],
 ) -> None:
     usr = await u_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
     lang = normalize_locale(usr.language_code)
@@ -1967,6 +1978,8 @@ async def handle_voice_action(
         task, plan_done = await t_svc.mark_task_by_hint(pet, intent.get("task_hint", ""))
         if task:
             await metrics.inc(BotMetrics.MARK_DONE)
+            if plan_done:
+                await record_task_day(act_repo, pet, usr)
             reply = t("voice_action.marked", lang, task=task.title)
             if ai_message:
                 reply += "\n\n" + ai_message

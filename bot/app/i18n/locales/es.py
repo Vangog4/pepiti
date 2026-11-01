@@ -356,6 +356,23 @@ STRINGS: dict[str, str] = {
     "health.btn.done": "✅ Hecho",
     "health.btn.snooze": "⏰ +3 días",
     "health.snoozed": "Vale, te lo recuerdo el {date}.",
+    "menu.btn.tracker": "🔥 Racha",
+    "tracker.title": "🔥 <b>Seguimiento de {name}</b>\n──────────",
+    "tracker.streak": "Racha: <b>{n}</b> días seguidos",
+    "tracker.streak.zero": "Racha: 0 por ahora. ¡Entrena hoy y empieza!",
+    "tracker.today.done": "Hoy: ✅ hecho",
+    "tracker.today.todo": "Hoy: aún no",
+    "tracker.freezes": "🧊 Congelaciones esta semana: {n}",
+    "tracker.week": "Esta semana: {days} entrenos, {walks} paseos ({minutes} min)",
+    "tracker.badges": "Logros: {list}",
+    "tracker.walk.btn": "🚶 {m} min",
+    "tracker.walk.saved": "Paseo guardado: {m} min",
+    "tracker.badge.new": "🎉 Nuevo logro: {badge}",
+    "tracker.badge.streak_7": "🔥7 días",
+    "tracker.badge.streak_30": "⚡30 días",
+    "tracker.badge.streak_100": "🏆100 días",
+    "tracker.badge.walks_10": "🚶10 paseos",
+    "report.weekly.stats": "📊 <b>Tu semana, {name}</b>\n\n🐶 {pet}\n🏋️ Entrenos: {days}\n🚶 Paseos: {walks} ({minutes} min)\n🔥 Racha: {streak} días\n\n¡Buen trabajo! El lunes llega un plan nuevo.",
     "premium.refunded": (
         "✔ Tu reembolso ha sido procesado. Suscripción Premium desactivada.\n"
         "Si esto es un error, por favor contacta al soporte."

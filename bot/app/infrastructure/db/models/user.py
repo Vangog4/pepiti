@@ -1,4 +1,14 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    func,
+)
 from sqlalchemy.orm import relationship
 
 from app.infrastructure.db.models.base import Base
@@ -34,6 +44,7 @@ class UserModel(Base):
         ),
         nullable=True,
     )
+    weekly_report_sent_on = Column(Date, nullable=True)  # user's local date of last report
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

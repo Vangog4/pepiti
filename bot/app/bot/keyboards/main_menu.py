@@ -27,7 +27,10 @@ def get_main_menu(
         InlineKeyboardButton(text=t("menu.btn.coach", lang), callback_data="menu_coach"),
         InlineKeyboardButton(text=t("menu.btn.profile", lang), callback_data="menu_profile"),
     )
-    b.row(InlineKeyboardButton(text=t("menu.btn.health", lang), callback_data="menu_health"))
+    b.row(
+        InlineKeyboardButton(text=t("menu.btn.health", lang), callback_data="menu_health"),
+        InlineKeyboardButton(text=t("menu.btn.tracker", lang), callback_data="menu_tracker"),
+    )
     premium_key = "menu.btn.premium.active" if is_premium else "menu.btn.premium"
     b.row(
         InlineKeyboardButton(text=t(premium_key, lang), callback_data="menu_premium"),

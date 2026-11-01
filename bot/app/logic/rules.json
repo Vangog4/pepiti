@@ -113,5 +113,21 @@
     },
     "remind_days_before": 3,
     "snooze_days": 3
+  },
+  "tracker": {
+    "freezes_per_week_free": 1,
+    "freezes_per_week_premium": 3,
+    "walk_minutes": [
+      15,
+      30,
+      60
+    ],
+    "walks_for_badge": 10,
+    "streak_badges": [
+      7,
+      30,
+      100
+    ],
+    "weekly_report_hour": 19
   }
 }

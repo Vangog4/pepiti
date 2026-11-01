@@ -379,6 +379,23 @@ STRINGS: dict[str, str] = {
     "health.btn.done": "✅ Сделано",
     "health.btn.snooze": "⏰ +3 дня",
     "health.snoozed": "Ок, напомню {date}.",
+    "menu.btn.tracker": "🔥 Трекер",
+    "tracker.title": "🔥 <b>Трекер {name}</b>\n──────────",
+    "tracker.streak": "Стрик: <b>{n}</b> дн. подряд",
+    "tracker.streak.zero": "Стрик: пока 0. Займись сегодня — и он пойдёт!",
+    "tracker.today.done": "Сегодня: ✅ уже есть",
+    "tracker.today.todo": "Сегодня: ещё не занимались",
+    "tracker.freezes": "🧊 Заморозок на неделе: {n}",
+    "tracker.week": "Неделя: тренировок {days}, прогулок {walks} ({minutes} мин)",
+    "tracker.badges": "Ачивки: {list}",
+    "tracker.walk.btn": "🚶 {m} мин",
+    "tracker.walk.saved": "Записал прогулку: {m} мин",
+    "tracker.badge.new": "🎉 Новая ачивка: {badge}",
+    "tracker.badge.streak_7": "🔥7 дней",
+    "tracker.badge.streak_30": "⚡30 дней",
+    "tracker.badge.streak_100": "🏆100 дней",
+    "tracker.badge.walks_10": "🚶10 прогулок",
+    "report.weekly.stats": "📊 <b>Итоги недели, {name}</b>\n\n🐶 {pet}\n🏋️ Тренировок: {days}\n🚶 Прогулок: {walks} ({minutes} мин)\n🔥 Стрик: {streak} дн.\n\nОтличная работа! В понедельник новый план.",
     "premium.refunded": (
         "✔ Возврат средств обработан. Подписка Premium деактивирована.\n"
         "Если это ошибка — обратись в поддержку."

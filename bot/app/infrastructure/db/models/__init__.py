@@ -1,3 +1,4 @@
+from app.infrastructure.db.models.activity_log import ActivityLogModel  # noqa: F401
 from app.infrastructure.db.models.ai_conversation import AiConversationModel  # noqa: F401
 from app.infrastructure.db.models.base import Base  # noqa: F401
 from app.infrastructure.db.models.coach_thread import CoachThreadModel  # noqa: F401
