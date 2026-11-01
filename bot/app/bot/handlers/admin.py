@@ -39,6 +39,7 @@ def _admin_keyboard() -> types.InlineKeyboardMarkup:
             [types.InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
             [types.InlineKeyboardButton(text="🧠 AI logic", callback_data="admin_ai_stats")],
             [types.InlineKeyboardButton(text="🔗 Рефералы", callback_data="admin_ref_stats")],
+            [types.InlineKeyboardButton(text="📈 Воронка", callback_data="admin_funnel")],
         ]
     )
 
@@ -83,6 +84,29 @@ async def admin_stats(
         f"🔥 Активных: <b>{stats['active_today']}</b>  |  "
         f"📈 Конверсия: <b>{conv}%</b>"
     )
+    await cb.message.edit_text(text, reply_markup=_admin_keyboard(), parse_mode="HTML")
+
+
+@router.callback_query(F.data == "admin_funnel")
+async def admin_funnel(cb: types.CallbackQuery) -> None:
+    """Paywall -> plans -> invoice -> paid, unique users over 7 and 30 days."""
+    from app.infrastructure.redis.funnel import conversion_rates, get_funnel
+
+    await cb.answer()
+    funnel = get_funnel()
+    blocks = []
+    for days in (7, 30):
+        s = await funnel.summary(days)
+        r = conversion_rates(s)
+        blocks.append(
+            f"<b>{days} дн.</b>\n"
+            f"🚧 Пейволл: <b>{s['paywall']}</b>\n"
+            f"📋 Тарифы: <b>{s['plans']}</b> ({r['plans_from_paywall']}%)\n"
+            f"🧾 Инвойс: <b>{s['invoice']}</b> ({r['invoice_from_plans']}%)\n"
+            f"⭐ Оплата: <b>{s['paid']}</b> ({r['paid_from_invoice']}%)\n"
+            f"🎯 Из пейволла в оплату: <b>{r['paid_from_paywall']}%</b>"
+        )
+    text = "📈 <b>Воронка</b> (уникальные пользователи)\n\n" + "\n\n".join(blocks)
     await cb.message.edit_text(text, reply_markup=_admin_keyboard(), parse_mode="HTML")
 
 

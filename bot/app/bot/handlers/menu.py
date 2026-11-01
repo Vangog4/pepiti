@@ -27,6 +27,7 @@ from app.bot.keyboards.main_menu import (
 from app.bot.keyboards.training import get_task_keyboard, get_week_day_keyboard
 from app.core.config import settings
 from app.core.container import AppContainer
+from app.core.context import current_tg_id
 from app.core.shop import SHOP_URL_BY_SIZE, SHOP_URL_LONGPLAY, SHOP_URL_MAIN, SHOP_URL_TRAINING
 from app.core.shop_recommendations import AFTER_COMPLETION, AFTER_EXERCISE, get_shop_button
 from app.core.tasks import spawn
@@ -39,6 +40,7 @@ from app.infrastructure.db.repositories.ai_conversation_repo import AiConversati
 from app.infrastructure.db.repositories.coach_thread_repo import CoachThreadRepository
 from app.infrastructure.db.repositories.pet_fact_repo import PetFactRepository
 from app.infrastructure.redis.ai_rate_limit import FREE_DAILY_LIMIT, AiRateLimiter
+from app.infrastructure.redis.funnel import track_soon
 from app.infrastructure.redis.metrics import BotMetrics
 from app.services.ai_service import AiService
 from app.services.coach_service import CoachService
@@ -68,6 +70,7 @@ router = Router(name="menu_router")
 
 
 def _rate_limit_kb(lang: str = "ru") -> types.InlineKeyboardMarkup:
+    track_soon("paywall", current_tg_id.get())  # the one place every paywall is built
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
             [

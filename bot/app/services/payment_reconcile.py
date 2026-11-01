@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.i18n import normalize_locale, t
+from app.infrastructure.redis.funnel import track_soon
 from app.services.products import get_product
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,7 @@ async def recover(
             logger.exception("reconcile: failed to grant charge %s", p.charge_id)
             continue
         granted += 1
+        track_soon("paid", p.telegram_id)
         logger.warning(
             "reconcile: RECOVERED lost payment %s for user %s", p.charge_id, p.telegram_id
         )

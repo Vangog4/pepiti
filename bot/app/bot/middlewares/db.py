@@ -5,6 +5,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.context import current_tg_id
 from app.infrastructure.db.session import _session_var
 
 
@@ -18,9 +19,14 @@ class DbSessionMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        async with self.session_factory() as session:
-            token = _session_var.set(session)
-            try:
-                return await handler(event, data)
-            finally:
-                _session_var.reset(token)
+        user = data.get("event_from_user")
+        ctx_token = current_tg_id.set(getattr(user, "id", None))
+        try:
+            async with self.session_factory() as session:
+                token = _session_var.set(session)
+                try:
+                    return await handler(event, data)
+                finally:
+                    _session_var.reset(token)
+        finally:
+            current_tg_id.reset(ctx_token)

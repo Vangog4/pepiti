@@ -8,9 +8,11 @@ from sqlalchemy import update
 from app.bot.keyboards.main_menu import get_back_keyboard
 from app.core.config import settings
 from app.core.container import AppContainer
+from app.core.context import current_tg_id
 from app.i18n import normalize_locale, t
 from app.infrastructure.db.models.user import UserModel
 from app.infrastructure.db.repositories.subscription_repo import SubscriptionRepository
+from app.infrastructure.redis.funnel import track_soon
 from app.services.entitlements import has_premium
 from app.services.products import PRODUCTS, STARS_SUBSCRIPTION_PERIOD, get_product
 from app.services.subscription_service import SubscriptionService
@@ -30,6 +32,7 @@ async def send_premium_invoice(
     product = get_product(product_code)
     if product is None:
         return
+    track_soon("invoice", current_tg_id.get())
     prices = [types.LabeledPrice(label=t("premium.invoice.label", lang), amount=product.stars)]
     title = t("premium.invoice.title", lang)
     description = t("premium.invoice.description", lang)
@@ -88,6 +91,7 @@ async def show_premium(
     sub_svc: SubscriptionService = Provide[AppContainer.subscription_service],
 ) -> None:
     await cb.answer()
+    track_soon("plans", cb.from_user.id)
     usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
     lang = normalize_locale(usr.language_code)
 
@@ -157,6 +161,7 @@ async def successful_payment(
         return
 
     usr = await u_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
+    track_soon("paid", msg.from_user.id)
     await sub_svc.activate(
         user_id=usr.id,
         telegram_id=msg.from_user.id,
