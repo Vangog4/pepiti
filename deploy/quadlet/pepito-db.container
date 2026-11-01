@@ -1,0 +1,27 @@
+[Unit]
+Description=Pepito PostgreSQL
+After=network-online.target
+
+[Container]
+Image=docker.io/library/postgres:16-alpine
+ContainerName=pepito-bot_db_1
+Network=pepito.network
+PodmanArgs=--network-alias=db
+# Secrets: POSTGRES_PASSWORD comes from the 0600 env file. NO PublishPort: the database
+# is reachable only from the pepito network, never from the host or the internet.
+EnvironmentFile=/root/pepito/bot/.env
+Environment=POSTGRES_USER=pepito POSTGRES_DB=pepito_db
+Volume=pepito-bot_pepito_pgdata:/var/lib/postgresql/data
+HealthCmd=pg_isready -U pepito -d pepito_db
+HealthInterval=10s
+HealthRetries=5
+HealthStartPeriod=20s
+HealthOnFailure=kill
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

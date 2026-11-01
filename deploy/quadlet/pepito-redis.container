@@ -1,0 +1,23 @@
+[Unit]
+Description=Pepito Redis (password protected, internal only)
+After=network-online.target
+
+[Container]
+Image=docker.io/library/redis:7-alpine
+ContainerName=pepito-bot_redis_1
+Network=pepito.network
+PodmanArgs=--network-alias=redis
+EnvironmentFile=/root/pepito/bot/.env
+Exec=sh -c 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"'
+Volume=pepito-bot_pepito_redisdata:/data
+HealthCmd=sh -c 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG'
+HealthInterval=10s
+HealthRetries=5
+HealthOnFailure=kill
+
+[Service]
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

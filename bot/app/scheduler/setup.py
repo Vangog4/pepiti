@@ -6,6 +6,7 @@ from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.scheduler.jobs.expire_subscriptions import expire_subscriptions
+from app.scheduler.jobs.heartbeat import beat
 from app.scheduler.jobs.reminders import send_daily_reminders, send_health_reminders
 from app.scheduler.jobs.reports import send_weekly_reports
 
@@ -14,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 def create_scheduler(session_factory: async_sessionmaker, bot: Bot) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone="UTC")
+
+    scheduler.add_job(beat, "interval", seconds=30, id="heartbeat", replace_existing=True)
 
     scheduler.add_job(
         send_daily_reminders,
