@@ -8,6 +8,7 @@ from sqlalchemy import (
     Integer,
     String,
     func,
+    text,
 )
 from sqlalchemy.orm import relationship
 
@@ -44,6 +45,7 @@ class UserModel(Base):
         ),
         nullable=True,
     )
+    notify_seasonal = Column(Boolean, nullable=False, default=True, server_default=text("true"))
     media_trial_used_at = Column(DateTime, nullable=True)  # one free photo/voice analysis
     weekly_report_sent_on = Column(Date, nullable=True)  # user's local date of last report
     created_at = Column(DateTime, server_default=func.now())

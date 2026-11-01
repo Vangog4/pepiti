@@ -402,6 +402,15 @@ STRINGS: dict[str, str] = {
     "nudge.renew.last": "⏳ O Premium termina amanhã ({date}). Renove para manter as respostas ilimitadas e a memória de {pet}.",
     "nudge.renew.btn": "⭐ Renovar",
     "nudge.evening": "🔥 Sequência de {n} dias — hoje ainda não treinou com {pet}. 5 minutos mantêm viva!",
+    "nudge.season.ticks": "🕷 {pet}: começou a temporada de carrapatos. Confira após cada passeio e não esqueça o tratamento — registre em Saúde.",
+    "nudge.season.heat": "☀️ Calor! Passeie com {pet} de manhã e à noite, dê bastante água e teste o asfalto com a mão.",
+    "nudge.season.reagents": "🧂 Inverno e sal nas ruas: lave as patas de {pet} após o passeio e use cera protetora.",
+    "nudge.winback": "👋 {pet} sente falta dos treinos. Com o Premium voltam perguntas ilimitadas, memória e cartões. Vai voltar?",
+    "nudge.winback.btn": "⭐ Voltar",
+    "settings.seasonal.on": "🌦 Estação: sim",
+    "settings.seasonal.off": "🌦 Estação: não",
+    "settings.seasonal.toast.on": "Dicas sazonais ativadas",
+    "settings.seasonal.toast.off": "Dicas sazonais desativadas",
     "premium.refunded": (
         "✔ Seu reembolso foi processado. Assinatura Premium desativada.\n"
         "Se isso for um erro, entre em contato com o suporte."

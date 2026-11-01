@@ -218,6 +218,27 @@ async def show_more(
     )
 
 
+@router.callback_query(F.data == "toggle_seasonal")
+@inject
+async def toggle_seasonal(
+    cb: types.CallbackQuery,
+    u_svc: UserService = Provide[AppContainer.user_service],
+) -> None:
+    usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
+    usr.notify_seasonal = not bool(usr.notify_seasonal)
+    await u_svc.repo.session.commit()
+    lang = normalize_locale(usr.language_code)
+    await cb.answer(
+        t(
+            "settings.seasonal.toast.on" if usr.notify_seasonal else "settings.seasonal.toast.off",
+            lang,
+        )
+    )
+    await cb.message.edit_reply_markup(
+        reply_markup=get_settings_keyboard(lang, seasonal=bool(usr.notify_seasonal))
+    )
+
+
 @router.callback_query(F.data == "menu_settings")
 @inject
 async def show_settings(
@@ -239,7 +260,7 @@ async def show_settings(
         reminder_line = t("settings.main.reminder_default", lang, tz=tz)
     await cb.message.edit_text(
         f"{t('settings.main.title', lang)}\n\n{reminder_line}",
-        reply_markup=get_settings_keyboard(lang),
+        reply_markup=get_settings_keyboard(lang, seasonal=bool(usr.notify_seasonal)),
         parse_mode="HTML",
     )
 

@@ -13,7 +13,12 @@ from app.scheduler.jobs.expire_subscriptions import expire_subscriptions
 from app.scheduler.jobs.heartbeat import beat
 from app.scheduler.jobs.reminders import send_daily_reminders, send_health_reminders
 from app.scheduler.jobs.reports import send_weekly_reports
-from app.services.nudges import send_evening_nudges, send_renewal_reminders
+from app.services.nudges import (
+    send_evening_nudges,
+    send_renewal_reminders,
+    send_seasonal_nudges,
+    send_winback,
+)
 from app.services.payment_reconcile import reconcile_stars
 
 logger = logging.getLogger(__name__)
@@ -49,6 +54,8 @@ def create_scheduler(session_factory: async_sessionmaker, bot: Bot) -> AsyncIOSc
     for job, job_id in (
         (send_renewal_reminders, "renewal_reminders"),
         (send_evening_nudges, "evening_nudge"),
+        (send_seasonal_nudges, "seasonal_nudges"),
+        (send_winback, "winback"),
     ):
         scheduler.add_job(
             job,

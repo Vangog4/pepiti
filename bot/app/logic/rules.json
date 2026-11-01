@@ -173,6 +173,14 @@
     ],
     "evening_local_hour": 20,
     "evening_min_streak": 2,
-    "dedup_ttl_days": 10
+    "dedup_ttl_days": 10,
+    "seasons": {
+      "4": "ticks",
+      "7": "heat",
+      "12": "reagents"
+    },
+    "season_send_day": 5,
+    "winback_days_after": 3,
+    "season_dedup_days": 40
   }
 }

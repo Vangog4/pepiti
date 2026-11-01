@@ -61,10 +61,16 @@ def get_more_menu(
     return b.as_markup()
 
 
-def get_settings_keyboard(lang: str = "ru") -> InlineKeyboardMarkup:
+def get_settings_keyboard(lang: str = "ru", seasonal: bool = True) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     b.row(
         InlineKeyboardButton(text=t("settings.reminder.btn", lang), callback_data="menu_reminder")
+    )
+    b.row(
+        InlineKeyboardButton(
+            text=t("settings.seasonal.on" if seasonal else "settings.seasonal.off", lang),
+            callback_data="toggle_seasonal",
+        )
     )
     b.row(InlineKeyboardButton(text=t("profile.edit.btn", lang), callback_data="menu_edit_profile"))
     b.row(

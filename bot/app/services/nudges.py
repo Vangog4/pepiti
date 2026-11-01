@@ -40,6 +40,27 @@ def is_one_time_pack(plan_code: str | None) -> bool:
     return product is not None and not product.recurring
 
 
+def season_key(month: int) -> str | None:
+    """Northern-hemisphere seasonal topic for a month (rules.json -> nudges.seasons)."""
+    seasons = rule("nudges.seasons", {}) or {}
+    return seasons.get(str(month))
+
+
+def seasonal_due(now_utc: datetime, tz: str | None) -> str | None:
+    """Topic to push today (local date), only on the configured day of a seasonal month."""
+    local = local_now(tz, now_utc)
+    if local.day != int(rule("nudges.season_send_day", 5)):
+        return None
+    return season_key(local.month)
+
+
+def winback_due(expires_at: datetime, tz: str | None, now_utc: datetime, premium_now: bool) -> bool:
+    """Exactly N local days after a paid plan ended, and only if the user did not come back."""
+    if premium_now:
+        return False
+    return -renewal_days_left(expires_at, tz, now_utc) == int(rule("nudges.winback_days_after", 3))
+
+
 def evening_nudge_due(snap: dict, local_hour: int) -> bool:
     return (
         local_hour == int(rule("nudges.evening_local_hour", 20))
@@ -197,4 +218,97 @@ async def send_evening_nudges(
                 sent += 1
             except Exception as e:
                 logger.warning("evening nudge to %s failed: %s", user.telegram_id, e)
+    return sent
+
+
+def _plans_kb(lang: str, key: str = "nudge.renew.btn") -> types.InlineKeyboardMarkup:
+    return types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [types.InlineKeyboardButton(text=t(key, lang), callback_data="menu_premium")]
+        ]
+    )
+
+
+async def _first_pet(session: Any, user_id: int):
+    from app.infrastructure.db.models.pet import PetModel
+
+    return (
+        (await session.execute(select(PetModel).where(PetModel.user_id == user_id).limit(1)))
+        .scalars()
+        .first()
+    )
+
+
+async def send_seasonal_nudges(
+    session_factory: Any, bot: Any, guard: Any, now_utc: datetime | None = None
+) -> int:
+    """One seasonal tip per season month on the configured day. Users can opt out."""
+    now_utc = now_utc or datetime.now(UTC)
+    sent = 0
+    async with session_factory() as session:
+        for user in await due_users(session, now_utc):
+            if not getattr(user, "notify_seasonal", True):
+                continue
+            topic = seasonal_due(now_utc, user.timezone)
+            if topic is None:
+                continue
+            local = local_now(user.timezone, now_utc)
+            ttl = int(rule("nudges.season_dedup_days", 40)) * 86400
+            if not await guard.first(f"season:{user.id}:{local:%Y-%m}", ttl):
+                continue
+            pet = await _first_pet(session, user.id)
+            lang = normalize_locale(user.language_code)
+            text = t(f"nudge.season.{topic}", lang, pet=pet.name if pet else "")
+            try:
+                await bot.send_message(user.telegram_id, text, parse_mode="HTML")
+                sent += 1
+            except Exception as e:
+                logger.warning("seasonal nudge to %s failed: %s", user.telegram_id, e)
+    return sent
+
+
+async def send_winback(
+    session_factory: Any, bot: Any, guard: Any, now_utc: datetime | None = None
+) -> int:
+    """A gentle comeback message once, N days after a PAID plan lapsed."""
+    from app.infrastructure.db.models.subscription import SubscriptionModel
+
+    now_utc = now_utc or datetime.now(UTC)
+    sent = 0
+    async with session_factory() as session:
+        for user in await due_users(session, now_utc):
+            if has_premium(user):
+                continue
+            sub = (
+                (
+                    await session.execute(
+                        select(SubscriptionModel)
+                        .where(
+                            SubscriptionModel.user_id == user.id,
+                            SubscriptionModel.provider == "telegram_stars",
+                        )
+                        .order_by(SubscriptionModel.expires_at.desc())
+                        .limit(1)
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            if sub is None or not winback_due(sub.expires_at, user.timezone, now_utc, False):
+                continue
+            if not await guard.first(f"winback:{sub.id}", _ttl()):
+                continue
+            pet = await _first_pet(session, user.id)
+            lang = normalize_locale(user.language_code)
+            text = t("nudge.winback", lang, pet=pet.name if pet else "")
+            try:
+                await bot.send_message(
+                    user.telegram_id,
+                    text,
+                    reply_markup=_plans_kb(lang, "nudge.winback.btn"),
+                    parse_mode="HTML",
+                )
+                sent += 1
+            except Exception as e:
+                logger.warning("winback to %s failed: %s", user.telegram_id, e)
     return sent
