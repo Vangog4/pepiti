@@ -29,12 +29,12 @@ def test_rules_json_loads():
     assert "ai" in rules
     assert "premium" in rules
     assert "referral" in rules
-    assert rules["ai"]["free_daily_limit"] == 5
+    assert rules["ai"]["free_daily_limit"] == 3
 
 
 def test_rule_dotted_path():
     reload_rules()
-    assert rule("premium.stars_1m") == 299
+    assert rule("premium.stars_1m") == 950
     assert rule("missing.path", default=42) == 42
 
 

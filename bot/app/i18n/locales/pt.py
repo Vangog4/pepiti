@@ -133,8 +133,8 @@ STRINGS: dict[str, str] = {
     ),
     "ai.rate_limit": (
         "💬 <b>Limite diário atingido</b>\n\n"
-        "Gratuito: <b>5 solicitações IA por dia</b>\n"
-        "O limite é redefinido à meia-noite UTC.\n\n"
+        "Gratuito: <b>{limit} solicitações IA por dia</b>\n"
+        "O limite é redefinido à sua meia-noite local.\n\n"
         "⭐ <b>Premium — ilimitado:</b>\n"
         "💬 Perguntas ilimitadas ao treinador\n"
         "🧠 Análise detalhada do progresso\n"
@@ -290,6 +290,11 @@ STRINGS: dict[str, str] = {
     ),
     "premium.paysupport": "💬 <b>Suporte de pagamento</b>\n\nPagou e não recebeu o Premium? Precisa de reembolso? Fale com o suporte com o ID do pagamento do seu chat do Telegram. Respondemos em um dia.",
     "premium.terms": "📄 <b>Termos</b>\n\nPremium é uma assinatura digital do treinador canino com IA Pepito, paga em Telegram Stars. Renova sozinha e pode ser cancelada a qualquer momento nas configurações do Telegram. Reembolso: /paysupport. O bot não substitui o veterinário.",
+    "premium.plan.premium_1m.btn": "1 mês · {stars}⭐",
+    "premium.plan.premium_3m.btn": "3 mês · {stars}⭐",
+    "premium.plan.premium_12m.btn": "12 mês · {stars}⭐",
+    "premium.plans.btn": "Planos",
+    "ai.remaining": "Restam {n} de {limit} hoje",
     "premium.refunded": (
         "✔ Seu reembolso foi processado. Assinatura Premium desativada.\n"
         "Se isso for um erro, entre em contato com o suporte."

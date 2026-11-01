@@ -1,6 +1,6 @@
 {
   "ai": {
-    "free_daily_limit": 5,
+    "free_daily_limit": 3,
     "schema_retries": 1,
     "models": {
       "default": "gemini-2.5-flash-lite",
@@ -39,17 +39,33 @@
     }
   },
   "premium": {
-    "stars_1m": 299,
+    "stars_1m": 950,
     "duration_days": 30
   },
   "referral": {
     "bonus_days": 3,
     "daily_limit": 10,
     "milestones": [
-      {"count": 3, "bonus_days": 7, "plan_code": "milestone_3"},
-      {"count": 5, "bonus_days": 14, "plan_code": "milestone_5"},
-      {"count": 10, "bonus_days": 30, "plan_code": "milestone_10"},
-      {"count": 25, "bonus_days": 90, "plan_code": "milestone_25"}
+      {
+        "count": 3,
+        "bonus_days": 7,
+        "plan_code": "milestone_3"
+      },
+      {
+        "count": 5,
+        "bonus_days": 14,
+        "plan_code": "milestone_5"
+      },
+      {
+        "count": 10,
+        "bonus_days": 30,
+        "plan_code": "milestone_10"
+      },
+      {
+        "count": 25,
+        "bonus_days": 90,
+        "plan_code": "milestone_25"
+      }
     ]
   },
   "coach": {
@@ -59,7 +75,34 @@
     "summary_every": 10
   },
   "shop": {
-    "puppy_age_tokens": ["щенок", "puppy"],
-    "small_size_tokens": ["маленький", "small", "до 10"]
+    "puppy_age_tokens": [
+      "щенок",
+      "puppy"
+    ],
+    "small_size_tokens": [
+      "маленький",
+      "small",
+      "до 10"
+    ]
+  },
+  "products": {
+    "premium_1m": {
+      "stars": 950,
+      "rub": 1490,
+      "days": 30,
+      "recurring": true
+    },
+    "premium_3m": {
+      "stars": 2200,
+      "rub": 3490,
+      "days": 90,
+      "recurring": false
+    },
+    "premium_12m": {
+      "stars": 5000,
+      "rub": 7990,
+      "days": 365,
+      "recurring": false
+    }
   }
 }

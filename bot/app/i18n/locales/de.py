@@ -134,8 +134,8 @@ STRINGS: dict[str, str] = {
     ),
     "ai.rate_limit": (
         "💬 <b>Tageslimit erreicht</b>\n\n"
-        "Kostenlos: <b>5 KI-Anfragen pro Tag</b>\n"
-        "Limit wird um Mitternacht UTC zurückgesetzt.\n\n"
+        "Kostenlos: <b>{limit} KI-Anfragen pro Tag</b>\n"
+        "Limit wird um deiner Ortsmitternacht zurückgesetzt.\n\n"
         "⭐ <b>Premium — unbegrenzt:</b>\n"
         "💬 Unbegrenzte Trainerfragen\n"
         "🧠 Detaillierte Fortschrittsanalyse\n"
@@ -292,6 +292,11 @@ STRINGS: dict[str, str] = {
     ),
     "premium.paysupport": "💬 <b>Zahlungssupport</b>\n\nBezahlt, aber kein Premium? Rückerstattung nötig? Schreib dem Support mit der Zahlungs-ID aus deinem Telegram-Chat. Wir antworten binnen eines Tages.",
     "premium.terms": "📄 <b>Bedingungen</b>\n\nPremium ist ein digitales Abo für den KI-Hundetrainer Pepito, bezahlt mit Telegram Stars. Es verlängert sich automatisch und lässt sich jederzeit in den Telegram-Einstellungen kündigen. Erstattung: /paysupport. Der Bot ersetzt keinen Tierarzt.",
+    "premium.plan.premium_1m.btn": "1 Mon · {stars}⭐",
+    "premium.plan.premium_3m.btn": "3 Mon · {stars}⭐",
+    "premium.plan.premium_12m.btn": "12 Mon · {stars}⭐",
+    "premium.plans.btn": "Tarife",
+    "ai.remaining": "Heute noch {n} von {limit}",
     "premium.refunded": (
         "✔ Deine Rückerstattung wurde verarbeitet. Premium-Abonnement deaktiviert.\n"
         "Wenn das ein Fehler ist, wende dich bitte an den Support."

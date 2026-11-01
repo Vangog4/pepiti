@@ -12,25 +12,72 @@ from app.i18n import normalize_locale, t
 from app.infrastructure.db.models.user import UserModel
 from app.infrastructure.db.repositories.subscription_repo import SubscriptionRepository
 from app.services.entitlements import has_premium
-from app.services.subscription_service import PREMIUM_1M_STARS, SubscriptionService
+from app.services.products import PRODUCTS, STARS_SUBSCRIPTION_PERIOD, get_product
+from app.services.subscription_service import SubscriptionService
 from app.services.user_service import UserService
 
 logger = logging.getLogger(__name__)
 router = Router(name="subscription_router")
 
 
-async def send_premium_invoice(target: types.Message, lang: str) -> None:
-    """Send Stars invoice. Used by bot button and WebApp deep-link /start premium."""
+async def send_premium_invoice(
+    target: types.Message, lang: str, product_code: str = "premium_1m"
+) -> None:
+    """Send a Stars invoice for ``product_code`` (also the WebApp deep-link /start premium).
+
+    The monthly plan is a native auto-renewing Stars subscription; longer packs are one-off.
+    """
+    product = get_product(product_code)
+    if product is None:
+        return
+    prices = [types.LabeledPrice(label=t("premium.invoice.label", lang), amount=product.stars)]
+    title = t("premium.invoice.title", lang)
+    description = t("premium.invoice.description", lang)
+    if product.recurring:
+        link = await target.bot.create_invoice_link(
+            title=title,
+            description=description,
+            payload=product.code,
+            provider_token="",  # empty = Telegram Stars (XTR)
+            currency="XTR",
+            prices=prices,
+            subscription_period=STARS_SUBSCRIPTION_PERIOD,
+        )
+        await target.answer(
+            title,
+            reply_markup=types.InlineKeyboardMarkup(
+                inline_keyboard=[[types.InlineKeyboardButton(text=f"⭐ {product.stars}", url=link)]]
+            ),
+        )
+        return
     await target.answer_invoice(
-        title=t("premium.invoice.title", lang),
-        description=t("premium.invoice.description", lang),
-        payload="premium_1m",
-        provider_token="",  # empty string = Telegram Stars (XTR)
+        title=title,
+        description=description,
+        payload=product.code,
+        provider_token="",
         currency="XTR",
-        prices=[
-            types.LabeledPrice(label=t("premium.invoice.label", lang), amount=PREMIUM_1M_STARS)
-        ],
+        prices=prices,
     )
+
+
+def _plans_keyboard(lang: str) -> types.InlineKeyboardMarkup:
+    rows = [
+        [
+            types.InlineKeyboardButton(
+                text=t(f"premium.plan.{p.code}.btn", lang, stars=p.stars),
+                callback_data=f"buy:{p.code}",
+            )
+        ]
+        for p in PRODUCTS.values()
+    ]
+    rows.append(
+        [
+            types.InlineKeyboardButton(
+                text=t("common.back_menu.btn", lang), callback_data="menu_main"
+            )
+        ]
+    )
+    return types.InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 @router.callback_query(F.data == "menu_premium")
@@ -57,27 +104,13 @@ async def show_premium(
         return
 
     await cb.message.edit_text(
-        t("premium.upsell.body", lang, price=PREMIUM_1M_STARS),
-        reply_markup=types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    types.InlineKeyboardButton(
-                        text=t("premium.upsell.btn", lang, price=PREMIUM_1M_STARS),
-                        callback_data="buy_premium",
-                    )
-                ],
-                [
-                    types.InlineKeyboardButton(
-                        text=t("common.back_menu.btn", lang), callback_data="menu_main"
-                    )
-                ],
-            ]
-        ),
+        t("premium.upsell.body", lang, price=PRODUCTS["premium_1m"].stars),
+        reply_markup=_plans_keyboard(lang),
         parse_mode="HTML",
     )
 
 
-@router.callback_query(F.data == "buy_premium")
+@router.callback_query(F.data.in_({"buy_premium"}) | F.data.startswith("buy:"))
 @inject
 async def send_invoice(
     cb: types.CallbackQuery,
@@ -86,19 +119,21 @@ async def send_invoice(
     await cb.answer()
     usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
     lang = normalize_locale(usr.language_code)
-    await send_premium_invoice(cb.message, lang)
+    code = cb.data.split(":", 1)[1] if cb.data.startswith("buy:") else "premium_1m"
+    await send_premium_invoice(cb.message, lang, code)
 
 
 @router.pre_checkout_query()
 async def pre_checkout(pcq: types.PreCheckoutQuery) -> None:
     # Only accept known premium invoice payloads
-    if pcq.invoice_payload != "premium_1m":
+    product = get_product(pcq.invoice_payload)
+    if product is None:
         await pcq.answer(ok=False, error_message="Unknown product")
         return
     if pcq.currency != "XTR":
         await pcq.answer(ok=False, error_message="Invalid currency")
         return
-    if pcq.total_amount != PREMIUM_1M_STARS:
+    if pcq.total_amount != product.stars:
         await pcq.answer(ok=False, error_message="Invalid amount")
         return
     await pcq.answer(ok=True)
@@ -112,7 +147,8 @@ async def successful_payment(
     sub_svc: SubscriptionService = Provide[AppContainer.subscription_service],
 ) -> None:
     payment = msg.successful_payment
-    if payment.invoice_payload != "premium_1m":
+    product = get_product(payment.invoice_payload)
+    if product is None:
         logger.warning(
             "Ignoring successful_payment with payload=%s user=%s",
             payment.invoice_payload,
@@ -125,6 +161,8 @@ async def successful_payment(
         user_id=usr.id,
         telegram_id=msg.from_user.id,
         charge_id=payment.telegram_payment_charge_id,
+        days=product.days,
+        plan_code=product.code,
     )
     logger.info(
         "Premium activated for user %s (charge %s)",

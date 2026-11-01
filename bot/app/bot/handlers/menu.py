@@ -33,7 +33,7 @@ from app.infrastructure.db.models.coach_thread import CoachThreadModel
 from app.infrastructure.db.models.training import TrainingPlanModel
 from app.infrastructure.db.repositories.ai_conversation_repo import AiConversationRepository
 from app.infrastructure.db.repositories.coach_thread_repo import CoachThreadRepository
-from app.infrastructure.redis.ai_rate_limit import AiRateLimiter
+from app.infrastructure.redis.ai_rate_limit import FREE_DAILY_LIMIT, AiRateLimiter
 from app.infrastructure.redis.metrics import BotMetrics
 from app.services.ai_service import AiService
 from app.services.coach_service import CoachService
@@ -61,9 +61,13 @@ def _rate_limit_kb(lang: str = "ru") -> types.InlineKeyboardMarkup:
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
+                # 1 tap: straight to the monthly Stars invoice
                 types.InlineKeyboardButton(
-                    text=t("ai.rate_limit.btn", lang), callback_data="menu_premium"
-                )
+                    text=t("ai.rate_limit.btn", lang), callback_data="buy:premium_1m"
+                ),
+                types.InlineKeyboardButton(
+                    text=t("premium.plans.btn", lang), callback_data="menu_premium"
+                ),
             ],
             [
                 types.InlineKeyboardButton(
@@ -72,6 +76,15 @@ def _rate_limit_kb(lang: str = "ru") -> types.InlineKeyboardMarkup:
             ],
         ]
     )
+
+
+async def _remaining_footer(rate_limiter, usr, tg_id: int, lang: str) -> str:
+    """Soft paywall hint under free answers: "2 of 3 left today". Empty for Premium."""
+    if has_premium(usr):
+        return ""
+    left = await rate_limiter.remaining(tg_id, usr.timezone)
+    limit = rate_limiter._limit
+    return "\n\n<i>" + t("ai.remaining", lang, n=left, limit=limit) + "</i>"
 
 
 class ReminderState(StatesGroup):
@@ -309,7 +322,9 @@ async def refresh_plan(
 
     if not has_premium(usr) and not await rate_limiter.reserve(cb.from_user.id, usr.timezone):
         await cb.message.edit_text(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
 
@@ -579,7 +594,9 @@ async def show_ai_progress(
     else:
         if not await rate_limiter.reserve(cb.from_user.id, usr.timezone):
             await cb.message.edit_text(
-                t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+                t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+                reply_markup=_rate_limit_kb(lang),
+                parse_mode="HTML",
             )
             return
         await cb.message.edit_text(t("ai.analyzing.free", lang), parse_mode="HTML")
@@ -771,7 +788,9 @@ async def process_coach_question(
         except Exception:
             pass
         await msg.answer(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
 
@@ -822,7 +841,8 @@ async def process_coach_question(
         topic="coach",
     )
 
-    await m.edit_text(answer, parse_mode="HTML", reply_markup=_coach_reply_keyboard(lang))
+    footer = await _remaining_footer(rate_limiter, usr, msg.from_user.id, lang)
+    await m.edit_text(answer + footer, parse_mode="HTML", reply_markup=_coach_reply_keyboard(lang))
 
 
 # ─── coach — photo (free, counts as 1 AI request) ────────────────────────────
@@ -852,7 +872,9 @@ async def process_coach_photo(
     if not has_premium(usr) and not await rate_limiter.reserve(msg.from_user.id, usr.timezone):
         await state.clear()
         await msg.answer(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
 
@@ -1284,7 +1306,9 @@ async def refresh_week_plan(
 
     if not has_premium(usr) and not await rate_limiter.reserve(cb.from_user.id, usr.timezone):
         await cb.message.edit_text(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
 
@@ -1335,7 +1359,9 @@ async def explain_daily(
     lang = normalize_locale(usr.language_code)
     if not has_premium(usr) and not await rate_limiter.reserve(cb.from_user.id, usr.timezone):
         await cb.message.edit_text(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
     await cb.message.edit_text(
@@ -1388,7 +1414,9 @@ async def explain_weekly(
     lang = normalize_locale(usr.language_code)
     if not has_premium(usr) and not await rate_limiter.reserve(cb.from_user.id, usr.timezone):
         await cb.message.edit_text(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
     await cb.message.edit_text(
@@ -1815,7 +1843,9 @@ async def handle_voice_action(
         except Exception:
             pass
         await msg.answer(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
 
@@ -1867,7 +1897,9 @@ async def handle_voice_action(
 
     if not has_premium(usr) and not await rate_limiter.reserve(msg.from_user.id, usr.timezone):
         await msg.answer(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
 
