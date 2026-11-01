@@ -7,7 +7,7 @@ from app.i18n.core import _load_locale
 
 LOCALES = ("ru", "en", "de", "es", "fr", "pt")
 MAX_LEN = 14
-# Every button label in every locale must fit 14 characters (placeholders count as 2).
+# Every button label in every locale must fit 14 characters (placeholders count as 4 digits).
 OVERLONG_BASELINE = 0
 
 
@@ -51,7 +51,7 @@ def _overlong() -> int:
     for lg in LOCALES:
         for k, v in _load_locale(lg).items():
             if isinstance(v, str) and (k.endswith(".btn") or ".btn." in k):
-                if len(re.sub(r"\{[^}]*\}", "00", v)) > MAX_LEN:
+                if len(re.sub(r"\{[^}]*\}", "0000", v)) > MAX_LEN:
                     n += 1
     return n
 

@@ -192,5 +192,10 @@
     "remind_days": 30,
     "compare_days": 30,
     "min_gap_days": 7
+  },
+  "ab": {
+    "enabled": false,
+    "salt": "pepito-2026-11",
+    "variants": {}
   }
 }

@@ -106,6 +106,19 @@ async def admin_funnel(cb: types.CallbackQuery) -> None:
             f"⭐ Оплата: <b>{s['paid']}</b> ({r['paid_from_invoice']}%)\n"
             f"🎯 Из пейволла в оплату: <b>{r['paid_from_paywall']}%</b>"
         )
+    from app.services.pricing import CONTROL, _weights, ab_enabled
+
+    if ab_enabled():
+        names = [CONTROL, *sorted(_weights())]
+        lines = ["<b>A/B цена, 30 дн.</b>"]
+        for name in names:
+            v = await funnel.summary(30, variant=name)
+            r = conversion_rates(v)
+            lines.append(
+                f"• <b>{name}</b>: пейволл {v['paywall']} → инвойс {v['invoice']} "
+                f"→ оплата {v['paid']} ({r['paid_from_paywall']}%)"
+            )
+        blocks.append("\n".join(lines))
     text = "📈 <b>Воронка</b> (уникальные пользователи)\n\n" + "\n\n".join(blocks)
     await cb.message.edit_text(text, reply_markup=_admin_keyboard(), parse_mode="HTML")
 

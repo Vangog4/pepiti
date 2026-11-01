@@ -14,6 +14,7 @@ from typing import Any
 from app.i18n import normalize_locale, t
 from app.infrastructure.redis.funnel import track_soon
 from app.services.gifts import parse_payload, target_telegram_id
+from app.services.pricing import allowed_stars
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ async def recover(
     granted = 0
     for p in payments:
         parsed = parse_payload(p.payload)
-        if parsed is None or p.amount != parsed.product.stars:
+        if parsed is None or p.amount not in allowed_stars(parsed.product):
             logger.warning(
                 "reconcile: skip %s (payload=%r amount=%s)", p.charge_id, p.payload, p.amount
             )

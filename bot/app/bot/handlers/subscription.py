@@ -16,6 +16,7 @@ from app.infrastructure.db.repositories.user_repo import UserRepository
 from app.infrastructure.redis.funnel import track_soon
 from app.services.entitlements import has_premium
 from app.services.gifts import parse_payload, target_telegram_id
+from app.services.pricing import allowed_stars, stars_for, variant_for
 from app.services.products import PRODUCTS, STARS_SUBSCRIPTION_PERIOD, get_product
 from app.services.subscription_service import SubscriptionService
 from app.services.user_service import UserService
@@ -35,7 +36,9 @@ async def send_premium_invoice(
     if product is None:
         return
     track_soon("invoice", current_tg_id.get())
-    prices = [types.LabeledPrice(label=t("premium.invoice.label", lang), amount=product.stars)]
+    user_id = current_tg_id.get() or getattr(getattr(target, "chat", None), "id", None)
+    stars = stars_for(product, variant_for(user_id))
+    prices = [types.LabeledPrice(label=t("premium.invoice.label", lang), amount=stars)]
     title = t("premium.invoice.title", lang)
     description = t("premium.invoice.description", lang)
     if product.recurring:
@@ -65,11 +68,12 @@ async def send_premium_invoice(
     )
 
 
-def _plans_keyboard(lang: str) -> types.InlineKeyboardMarkup:
+def _plans_keyboard(lang: str, user_id: int | None = None) -> types.InlineKeyboardMarkup:
+    variant = variant_for(user_id)
     rows = [
         [
             types.InlineKeyboardButton(
-                text=t(f"premium.plan.{p.code}.btn", lang, stars=p.stars),
+                text=t(f"premium.plan.{p.code}.btn", lang, stars=stars_for(p, variant)),
                 callback_data=f"buy:{p.code}",
             )
         ]
@@ -111,8 +115,12 @@ async def show_premium(
         return
 
     await cb.message.edit_text(
-        t("premium.upsell.body", lang, price=PRODUCTS["premium_1m"].stars),
-        reply_markup=_plans_keyboard(lang),
+        t(
+            "premium.upsell.body",
+            lang,
+            price=stars_for(PRODUCTS["premium_1m"], variant_for(cb.from_user.id)),
+        ),
+        reply_markup=_plans_keyboard(lang, cb.from_user.id),
         parse_mode="HTML",
     )
 
@@ -144,7 +152,7 @@ async def pre_checkout(
     if pcq.currency != "XTR":
         await pcq.answer(ok=False, error_message="Invalid currency")
         return
-    if pcq.total_amount != parsed.product.stars:
+    if pcq.total_amount not in allowed_stars(parsed.product):
         await pcq.answer(ok=False, error_message="Invalid amount")
         return
     if parsed.is_gift:

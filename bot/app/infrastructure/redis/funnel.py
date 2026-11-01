@@ -23,25 +23,36 @@ class Funnel:
         self._client = client
 
     @staticmethod
-    def _key(stage: str, day: datetime) -> str:
-        return f"pepito:funnel:{stage}:{day:%Y-%m-%d}"
+    def _key(stage: str, day: datetime, variant: str | None = None) -> str:
+        v = f":{variant}" if variant else ""
+        return f"pepito:funnel:{stage}{v}:{day:%Y-%m-%d}"
 
-    async def track(self, stage: str, user_id: int, now: datetime | None = None) -> None:
+    async def track(
+        self, stage: str, user_id: int, now: datetime | None = None, variant: str | None = None
+    ) -> None:
         if stage not in STAGES:
             raise ValueError(f"unknown funnel stage: {stage}")
-        key = self._key(stage, now or datetime.now(UTC))
+        day = now or datetime.now(UTC)
         try:
-            await self._client.pfadd(key, str(user_id))
-            await self._client.expire(key, TTL_SEC)
+            # overall counter always; per-variant counter only when an A/B variant is known
+            for key in (
+                {self._key(stage, day), self._key(stage, day, variant)}
+                if variant
+                else {self._key(stage, day)}
+            ):
+                await self._client.pfadd(key, str(user_id))
+                await self._client.expire(key, TTL_SEC)
         except Exception:
             logger.debug("funnel track failed", exc_info=True)
 
-    async def summary(self, days: int, now: datetime | None = None) -> dict[str, int]:
+    async def summary(
+        self, days: int, now: datetime | None = None, variant: str | None = None
+    ) -> dict[str, int]:
         now = now or datetime.now(UTC)
         out = dict.fromkeys(STAGES, 0)
         try:
             for stage in STAGES:
-                keys = [self._key(stage, now - timedelta(days=i)) for i in range(days)]
+                keys = [self._key(stage, now - timedelta(days=i), variant) for i in range(days)]
                 out[stage] = int(await self._client.pfcount(*keys))
         except Exception:
             logger.debug("funnel summary failed", exc_info=True)
@@ -78,7 +89,9 @@ def track_soon(stage: str, user_id: int | None) -> None:
         return
     try:
         from app.core.tasks import spawn
+        from app.services.pricing import ab_enabled, variant_for
 
-        spawn(get_funnel().track(stage, user_id), name=f"funnel:{stage}")
+        variant = variant_for(user_id) if ab_enabled() else None
+        spawn(get_funnel().track(stage, user_id, variant=variant), name=f"funnel:{stage}")
     except RuntimeError:
         pass  # no running event loop (e.g. a sync unit test)
