@@ -11,6 +11,7 @@ from app.core.tasks import spawn
 from app.infrastructure.db.models.pet import PetModel
 from app.infrastructure.redis.metrics import BotMetrics
 from app.logic.cascade import ModelCascade
+from app.logic.humanize import strip_cliches
 from app.logic.rules import contains_forbidden, get_rules, rule
 from app.logic.schemas import (
     BreedGuess,
@@ -48,9 +49,24 @@ class AiUnavailableError(RuntimeError):
     """AI call failed. Handlers must show a generic message and must NOT charge quota."""
 
 
+_TONE = {
+    "ru": (
+        "Address the owner informally as «ты» (never «вы»). Talk like a friendly trainer: "
+        "short plain sentences, no bureaucratic phrases, no filler like «Отличный вопрос» "
+        "or «Важно отметить»."
+    ),
+    "en": "Friendly, plain language. No filler like 'Great question' or 'It's important to note'.",
+    "de": "Address the owner informally as «du». Friendly, plain, no filler phrases.",
+    "fr": "Address the owner informally as «tu». Friendly, plain, no filler phrases.",
+    "es": "Address the owner informally as «tú». Friendly, plain, no filler phrases.",
+    "pt": "Address the owner informally as «você». Friendly, plain, no filler phrases.",
+}
+
+
 def _lang_instruction(lang: str) -> str:
     name = _LANG_NAMES.get(lang, "Russian (русский)")
-    return f"\n\nIMPORTANT: Respond strictly in {name}."
+    tone = _TONE.get(lang, _TONE["en"])
+    return f"\n\nIMPORTANT: Respond strictly in {name}. {tone}"
 
 
 def _coach_format(lang: str) -> str:
@@ -419,7 +435,7 @@ class AiService:
 
     def _guard_html(self, text: str, kind: str | None = None) -> str:
         """Postprocess + soft policy check + optional length cap from rules."""
-        out = self._postprocess(text)
+        out = strip_cliches(self._postprocess(text))
         hit = contains_forbidden(out)
         if hit:
             logger.warning("forbidden phrase in AI output: %s", hit)

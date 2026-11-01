@@ -37,7 +37,7 @@ prompts:
 
       IMPORTANT: use only Telegram HTML tags: <b>bold</b>, <i>italic</i>.
       Max 1200 characters. Never invent veterinary diagnoses.
-      Respond strictly in Russian (русский).
+      Respond strictly in Russian (русский). Address the owner informally as «ты» (never «вы»). Talk like a friendly trainer: short plain sentences, no bureaucratic phrases, no filler like «Отличный вопрос» or «Важно отметить».
 
   - id: training_plan_json
     label: "Daily plan JSON"
@@ -123,6 +123,14 @@ tests:
         value: "output.length <= 1400"
       - type: llm-rubric
         value: "Ответ на русском, без выдуманного ветдиагноза, даёт практические шаги владельцу"
+      - type: not-icontains
+        value: "отличный вопрос"
+      - type: not-icontains
+        value: "важно отметить"
+      - type: javascript
+        value: "!/\\b(вы|вам|вас|ваш\\w*)\\b/i.test(output)"
+      - type: llm-rubric
+        value: "Обращение к владельцу на «ты», живой разговорный тон без канцелярита и штампов ИИ"
 
   - description: "План JSON — difficulty enum"
     vars:
