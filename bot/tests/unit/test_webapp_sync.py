@@ -40,7 +40,7 @@ def _sign(token: str, auth_date: int, user_id: int = 1) -> str:
     params = {
         "auth_date": str(auth_date),
         "query_id": "AAQA",
-        "user": '{"id":%d,"first_name":"QA"}' % user_id,
+        "user": f'{{"id":{user_id},"first_name":"QA"}}',
     }
     data_check = "\n".join(f"{k}={v}" for k, v in sorted(params.items()))
     secret = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()

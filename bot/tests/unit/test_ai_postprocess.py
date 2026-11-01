@@ -1,6 +1,5 @@
 """Unit tests for AiService._postprocess — safe text normalization."""
 
-import pytest
 from app.services.ai_service import AiService, _coach_format
 
 pp = AiService._postprocess

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """QA user-journey smoke — run inside bot container.
 
-  podman exec pepito-bot_bot_1 python /app/scripts/qa_user_journey.py
+podman exec pepito-bot_bot_1 python /app/scripts/qa_user_journey.py
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
-import sys
 import traceback
 from collections import Counter
 from types import SimpleNamespace
@@ -154,7 +154,9 @@ async def main() -> int:
     else:
         ok("AI plan", f"fallback={fb} title={plan.get('title')!r} n={len(plan['tasks'])}")
         for i, tsk in enumerate(plan["tasks"][:3], 1):
-            print(f"   · {i}. {tsk.get('title')} [{tsk.get('difficulty')}/{tsk.get('duration_minutes')}m]")
+            print(
+                f"   · {i}. {tsk.get('title')} [{tsk.get('difficulty')}/{tsk.get('duration_minutes')}m]"
+            )
 
     print("… Gemini coach RU", flush=True)
     ans = await ai.answer_coach_question(
@@ -229,7 +231,7 @@ async def main() -> int:
         warn("AI partial", f"expected missing name, got keys={list(partial.keys())} mf={mf}")
 
     # postprocess XSS
-    from app.services.ai_service import AiService as AIS
+    from app.services.ai_service import AiService as AIS  # noqa: N814
 
     dirty = "<strong>ok</strong><script>alert(1)</script>"
     clean = AIS._postprocess(dirty)
@@ -293,6 +295,6 @@ async def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(asyncio.run(main()))
-    except Exception:
+    except Exception as err:
         traceback.print_exc()
-        raise SystemExit(2)
+        raise SystemExit(2) from err

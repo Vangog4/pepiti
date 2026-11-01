@@ -9,8 +9,8 @@ import pytest
 
 sys.path.insert(0, ".")
 
-from app.services.ai_service import AiService
 from app.logic.cascade import ModelCascade
+from app.services.ai_service import AiService
 
 
 def _make_service(cascade: ModelCascade | None = None) -> AiService:

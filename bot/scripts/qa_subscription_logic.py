@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Real-DB checks: subscription stacking, expire safety, rate limit, shop."""
+
 from __future__ import annotations
 
 import asyncio
 import json
-import sys
 from collections import Counter
 from datetime import datetime, timedelta
 from types import SimpleNamespace
@@ -72,14 +72,18 @@ async def main() -> int:
 
         now = datetime.utcnow()
         stale = (
-            await s.execute(
-                select(UserModel).where(
-                    UserModel.is_premium.is_(True),
-                    UserModel.subscription_expires_at.is_not(None),
-                    UserModel.subscription_expires_at <= now,
+            (
+                await s.execute(
+                    select(UserModel).where(
+                        UserModel.is_premium.is_(True),
+                        UserModel.subscription_expires_at.is_not(None),
+                        UserModel.subscription_expires_at <= now,
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         if stale:
             warn("stale premium flags", f"{len(stale)} users (until cron)")
         else:
@@ -93,9 +97,7 @@ async def main() -> int:
         tid = 999888777
         u = await urepo.get_by_telegram_id(tid)
         if not u:
-            u = UserModel(
-                telegram_id=tid, first_name="QA", language_code="ru", is_premium=False
-            )
+            u = UserModel(telegram_id=tid, first_name="QA", language_code="ru", is_premium=False)
             s.add(u)
             await s.commit()
             await s.refresh(u)
@@ -158,9 +160,7 @@ async def main() -> int:
             )
         exp_cnt = (
             await s2.execute(
-                text(
-                    "SELECT count(*) FROM subscriptions WHERE user_id=:uid AND status='expired'"
-                ),
+                text("SELECT count(*) FROM subscriptions WHERE user_id=:uid AND status='expired'"),
                 {"uid": u.id},
             )
         ).scalar()
@@ -176,9 +176,7 @@ async def main() -> int:
 
         await s2.execute(text("DELETE FROM subscriptions WHERE user_id=:uid"), {"uid": u.id})
         await s2.execute(
-            text(
-                "UPDATE users SET is_premium=false, subscription_expires_at=NULL WHERE id=:uid"
-            ),
+            text("UPDATE users SET is_premium=false, subscription_expires_at=NULL WHERE id=:uid"),
             {"uid": u.id},
         )
         await s2.commit()
@@ -199,9 +197,7 @@ async def main() -> int:
             fail("rate limit", "still allowed")
     await rl.reset(tid_rl)
 
-    puppy = SimpleNamespace(
-        name="Балу", age_category="Щенок (4–12 мес)", size_category="Средний"
-    )
+    puppy = SimpleNamespace(name="Балу", age_category="Щенок (4–12 мес)", size_category="Средний")
     adult = SimpleNamespace(
         name="Рекс",
         age_category="Взрослый (3–7 лет)",

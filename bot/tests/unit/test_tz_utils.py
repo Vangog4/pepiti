@@ -4,7 +4,6 @@ import sys
 
 sys.path.insert(0, ".")
 
-import pytest
 from app.core.tz_utils import _parse_offset, local_to_utc, utc_to_local
 
 
