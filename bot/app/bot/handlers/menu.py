@@ -21,6 +21,7 @@ from app.bot.keyboards.main_menu import (
     get_help_keyboard,
     get_language_keyboard,
     get_main_menu,
+    get_more_menu,
     get_settings_keyboard,
 )
 from app.bot.keyboards.training import get_task_keyboard, get_week_day_keyboard
@@ -196,6 +197,25 @@ async def back_to_main(
 
 
 # ─── settings submenu ────────────────────────────────────────────────────────
+
+
+@router.callback_query(F.data == "menu_more")
+@inject
+async def show_more(
+    cb: types.CallbackQuery,
+    state: FSMContext,
+    u_svc: UserService = Provide[AppContainer.user_service],
+) -> None:
+    await state.clear()
+    await cb.answer()
+    usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
+    lang = normalize_locale(usr.language_code)
+    await cb.message.edit_text(
+        t("menu.more.title", lang),
+        reply_markup=get_more_menu(
+            has_premium(usr), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
+        ),
+    )
 
 
 @router.callback_query(F.data == "menu_settings")
@@ -820,10 +840,6 @@ async def process_coach_question(
 
     if not has_premium(usr) and not await rate_limiter.reserve(msg.from_user.id, usr.timezone):
         await state.clear()
-        try:
-            await msg.delete()
-        except Exception:
-            pass
         await msg.answer(
             t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
             reply_markup=_rate_limit_kb(lang),
@@ -845,11 +861,6 @@ async def process_coach_question(
     context = coach_svc.build_prompt_context(thread, has_premium(usr), lang)
     owner_label = t("coach.role.owner", lang)
     history_with_q = (context + "\n" if context else "") + f"{owner_label}: {question}\n"
-
-    try:
-        await msg.delete()
-    except Exception:
-        pass
 
     m = await msg.answer(t("coach.thinking", lang), parse_mode="HTML")
     try:
@@ -1882,10 +1893,6 @@ async def handle_voice_action(
         return
 
     if not has_premium(usr) and not await rate_limiter.is_allowed(msg.from_user.id, usr.timezone):
-        try:
-            await msg.delete()
-        except Exception:
-            pass
         await msg.answer(
             t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
             reply_markup=_rate_limit_kb(lang),
@@ -1902,10 +1909,6 @@ async def handle_voice_action(
     if is_media and not has_premium(usr):
         # Free users: no download, no Gemini call, no quota spent on media.
         await metrics.inc(BotMetrics.PREMIUM_GATE)
-        try:
-            await msg.delete()
-        except Exception:
-            pass
         await msg.answer(
             t("coach.media.voice.premium", lang),
             reply_markup=_rate_limit_kb(lang),
@@ -1933,11 +1936,6 @@ async def handle_voice_action(
     active_plan = await t_svc.plan_repo.get_active_plan(pet.id)
     today_tasks = tasks_for_today(active_plan)
     task_titles = [tk.title for tk in today_tasks]
-
-    try:
-        await msg.delete()
-    except Exception:
-        pass
 
     if not has_premium(usr) and not await rate_limiter.reserve(msg.from_user.id, usr.timezone):
         await msg.answer(

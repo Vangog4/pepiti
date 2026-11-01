@@ -4,22 +4,22 @@ STRINGS: dict[str, str] = {
     # ── Main menu ──────────────────────────────────────────────────────────────
     "menu.main.greeting": "🐾 <b>Pepito — Entrenador IA para perros</b>",
     "menu.main.choose": "Elige una sección:",
-    "menu.btn.training": "🏋️ Entrenamiento de hoy",
-    "menu.btn.week_plan": "📅 Plan semanal",
-    "menu.btn.stats": "📊 Estadísticas",
-    "menu.btn.coach": "💬 Pregunta al entrenador",
-    "menu.btn.profile": "🐶 Mi mascota",
-    "menu.btn.premium": "⭐ Obtener Premium",
-    "menu.btn.premium.active": "⭐ Premium (activo)",
+    "menu.btn.training": "🏋️ Entreno",
+    "menu.btn.week_plan": "📅 Semana",
+    "menu.btn.stats": "📊 Estadística",
+    "menu.btn.coach": "💬 Entrenador",
+    "menu.btn.profile": "🐶 Pasaporte",
+    "menu.btn.premium": "⭐ Premium",
+    "menu.btn.premium.active": "⭐ Premium ✓",
     "menu.btn.shop": "🛒 Tienda",
-    "menu.btn.invite": "🐾 Invitar a un amigo",
-    "menu.btn.webapp": "📊 Panel",
+    "menu.btn.invite": "🎁 Amigos",
+    "menu.btn.webapp": "📱 App",
     "menu.main.streak": "{emoji} Entrenamientos completados: <b>{n}</b>\n\n",
     "menu.main.streak.days.one": "día",
     "menu.main.streak.days.few": "días",
     "menu.main.streak.days.many": "días",
     # ── Common buttons ─────────────────────────────────────────────────────────
-    "common.back_menu.btn": "🔙 Menú principal",
+    "common.back_menu.btn": "🔙 Menú",
     "common.back.btn": "🔙 Atrás",
     "common.menu.btn": "🔙 Menú",
     # ── Errors / Guards ────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ STRINGS: dict[str, str] = {
     "settings.language.choose": "Elige el idioma de la interfaz:",
     "settings.language.saved": "✅ Idioma cambiado a <b>{name}</b>.",
     "settings.language.btn": "🌐 Idioma",
-    "settings.btn": "⚙️ Configuración",
+    "settings.btn": "⚙️ Ajustes",
     "settings.reminder.btn": "⏰ Recordatorios",
     # ── Onboarding (Stage 9: conversational AI) ────────────────────────────────
     "onboarding.start.returning": "¡Bienvenido/a de vuelta, {name}! 🐾\n¿Qué hacemos hoy?",
@@ -141,13 +141,13 @@ STRINGS: dict[str, str] = {
         "🧠 Análisis detallado del progreso\n"
         "🎁 Recomendaciones personalizadas"
     ),
-    "ai.rate_limit.btn": "⭐ Probar Premium",
+    "ai.rate_limit.btn": "⭐ Premium",
     "ai.analyzing.premium": "🧠 <i>Realizando análisis detallado...</i>",
     "ai.analyzing.free": "🧠 <i>Analizando progreso...</i>",
     "ai.progress.premium.header": "⭐ <b>Análisis detallado para {name}</b>\n\n",
     "ai.progress.free.header": "📈 <b>Análisis de progreso para {name}</b>\n\n",
     "ai.progress.back.btn": "🔙 Volver a estadísticas",
-    "ai.retry.btn": "🔄 Intentar de nuevo",
+    "ai.retry.btn": "🔄 Reintentar",
     "ai.back_menu.btn": "🔙 Menú",
     "coach.entry": (
         "💬 <b>Pregunta al entrenador</b>\n\n"
@@ -175,7 +175,7 @@ STRINGS: dict[str, str] = {
         "Escribe una pregunta o envía una foto."
     ),
     "coach.hub.archive_btn": "📁 Finalizar consulta",
-    "coach.new_thread.btn": "🆕 Nueva consulta",
+    "coach.new_thread.btn": "🆕 Nuevo tema",
     "coach.thread.archived": "✔ Consulta finalizada.",
     "coach.thread.title_default": "Consulta",
     "coach.role.owner": "Dueño",
@@ -373,6 +373,8 @@ STRINGS: dict[str, str] = {
     "tracker.badge.streak_100": "🏆100 días",
     "tracker.badge.walks_10": "🚶10 paseos",
     "report.weekly.stats": "📊 <b>Tu semana, {name}</b>\n\n🐶 {pet}\n🏋️ Entrenos: {days}\n🚶 Paseos: {walks} ({minutes} min)\n🔥 Racha: {streak} días\n\n¡Buen trabajo! El lunes llega un plan nuevo.",
+    "menu.btn.more": "⚙️ Más",
+    "menu.more.title": "Elige una sección 👇",
     "premium.refunded": (
         "✔ Tu reembolso ha sido procesado. Suscripción Premium desactivada.\n"
         "Si esto es un error, por favor contacta al soporte."

@@ -8,22 +8,22 @@ STRINGS: dict[str, str] = {
     # ── Main menu ──────────────────────────────────────────────────────────────
     "menu.main.greeting": "🐾 <b>Главное меню Pepito</b>",
     "menu.main.choose": "Выбери нужный раздел:",
-    "menu.btn.training": "🏋️ Тренировка на сегодня",
-    "menu.btn.week_plan": "📅 Недельный план",
+    "menu.btn.training": "🏋️ Занятие",
+    "menu.btn.week_plan": "📅 Неделя",
     "menu.btn.stats": "📊 Статистика",
-    "menu.btn.coach": "💬 Вопрос кинологу",
-    "menu.btn.profile": "🐶 Мой питомец",
-    "menu.btn.premium": "⭐ Получить Premium",
-    "menu.btn.premium.active": "⭐ Premium (активен)",
+    "menu.btn.coach": "💬 Кинолог",
+    "menu.btn.profile": "🐶 Паспорт",
+    "menu.btn.premium": "⭐ Premium",
+    "menu.btn.premium.active": "⭐ Premium ✓",
     "menu.btn.shop": "🛒 Магазин",
-    "menu.btn.invite": "🐾 Позови друга",
-    "menu.btn.webapp": "📊 Дашборд",
+    "menu.btn.invite": "🎁 Друзья",
+    "menu.btn.webapp": "📱 Приложение",
     "menu.main.streak": "{emoji} Тренировок выполнено: <b>{n}</b>\n\n",
     "menu.main.streak.days.one": "день",
     "menu.main.streak.days.few": "дня",
     "menu.main.streak.days.many": "дней",
     # ── Common buttons ─────────────────────────────────────────────────────────
-    "common.back_menu.btn": "🔙 В главное меню",
+    "common.back_menu.btn": "🔙 В меню",
     "common.back.btn": "🔙 Назад",
     "common.menu.btn": "🔙 Меню",
     # ── Errors / Guards ────────────────────────────────────────────────────────
@@ -162,13 +162,13 @@ STRINGS: dict[str, str] = {
         "🎁 Персональные рекомендации\n"
         "──────────"
     ),
-    "ai.rate_limit.btn": "⭐ Попробовать Premium",
+    "ai.rate_limit.btn": "⭐ Premium",
     "ai.analyzing.premium": "🧠 <i>Провожу глубокий анализ...</i>",
     "ai.analyzing.free": "🧠 <i>Анализирую прогресс...</i>",
     "ai.progress.premium.header": "⭐ <b>Глубокий анализ прогресса {name}</b>\n\n",
     "ai.progress.free.header": "📈 <b>Анализ прогресса {name}</b>\n\n",
     "ai.progress.back.btn": "🔙 К статистике",
-    "ai.retry.btn": "🔄 Попробовать снова",
+    "ai.retry.btn": "🔄 Ещё раз",
     "ai.back_menu.btn": "🔙 Меню",
     "coach.entry": (
         "💬 <b>Вопрос кинологу</b>\n\n"
@@ -196,7 +196,7 @@ STRINGS: dict[str, str] = {
         "Напиши вопрос или отправь фото."
     ),
     "coach.hub.archive_btn": "📁 Завершить консультацию",
-    "coach.new_thread.btn": "🆕 Новая консультация",
+    "coach.new_thread.btn": "🆕 Новая тема",
     "coach.thread.archived": "✔ Консультация завершена.",
     "coach.thread.title_default": "Консультация",
     "coach.role.owner": "Хозяин",
@@ -396,6 +396,8 @@ STRINGS: dict[str, str] = {
     "tracker.badge.streak_100": "🏆100 дней",
     "tracker.badge.walks_10": "🚶10 прогулок",
     "report.weekly.stats": "📊 <b>Итоги недели, {name}</b>\n\n🐶 {pet}\n🏋️ Тренировок: {days}\n🚶 Прогулок: {walks} ({minutes} мин)\n🔥 Стрик: {streak} дн.\n\nОтличная работа! В понедельник новый план.",
+    "menu.btn.more": "⚙️ Ещё",
+    "menu.more.title": "Выбери раздел 👇",
     "premium.refunded": (
         "✔ Возврат средств обработан. Подписка Premium деактивирована.\n"
         "Если это ошибка — обратись в поддержку."

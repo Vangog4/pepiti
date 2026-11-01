@@ -194,11 +194,6 @@ async def save_profile_field_text(
             await msg.answer(t("edit_profile.error.invalid", lang))
             return
 
-    try:
-        await msg.delete()
-    except Exception:
-        pass
-
     if field_name in USER_FIELDS:
         setattr(usr, field_name, text)
         await u_svc.repo.session.commit()
