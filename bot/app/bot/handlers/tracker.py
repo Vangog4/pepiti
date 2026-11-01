@@ -59,9 +59,21 @@ def tracker_kb(lang: str) -> types.InlineKeyboardMarkup:
         )
         for m in walk_minutes()
     ]
+    share = [
+        types.InlineKeyboardButton(
+            text=t("tracker.card.streak.btn", lang), callback_data="card:streak"
+        ),
+        types.InlineKeyboardButton(
+            text=t("tracker.card.week.btn", lang), callback_data="card:week"
+        ),
+        types.InlineKeyboardButton(
+            text=t("tracker.card.badge.btn", lang), callback_data="card:badge"
+        ),
+    ]
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
             walks,
+            share,
             [
                 types.InlineKeyboardButton(
                     text=t("common.back_menu.btn", lang), callback_data="menu_main"
