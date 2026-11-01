@@ -44,6 +44,7 @@ class UserModel(Base):
         ),
         nullable=True,
     )
+    media_trial_used_at = Column(DateTime, nullable=True)  # one free photo/voice analysis
     weekly_report_sent_on = Column(Date, nullable=True)  # user's local date of last report
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

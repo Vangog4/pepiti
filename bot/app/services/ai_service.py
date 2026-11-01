@@ -15,12 +15,14 @@ from app.logic.rules import contains_forbidden, get_rules, rule
 from app.logic.schemas import (
     BreedGuess,
     FactExtraction,
+    MediaVerdict,
     PetProfileSchema,
     TrainingIntentSchema,
     TrainingPlanSchema,
     WeekPlanSchema,
 )
 from app.logic.trace import ai_trace
+from app.services.media_verdict import render_verdict
 
 logger = logging.getLogger("pepito.ai")
 
@@ -557,9 +559,9 @@ class AiService:
         history: str,
         lang: str = "ru",
     ) -> str:
+        """Analyse a photo/voice/video. Strict MediaVerdict -> HTML; raises AiUnavailableError."""
         breed = pet.breed or "unknown breed"
         age = pet.age_category or "unknown age"
-
         if "video" in mime_type:
             media_word = "video"
         elif "audio" in mime_type:
@@ -573,22 +575,27 @@ class AiService:
             + (f" Caption: {caption}" if caption else "")
             + ("\nConversation history:\n" + history + "\n" if history else "")
             + f"\nAnalyze the {media_word} and give specific training advice.\n\n"
-            + _media_format(lang)
-            + _HTML_RULE
-            + "\nMax 900 characters. Do not give veterinary diagnoses. "
-            "Section headers must be in the reply language." + _lang_instruction(lang)
+            "Return ONLY JSON with exactly these keys: "
+            '{"summary": "<what you see, 1-2 sentences>", '
+            '"urgency": "low" | "vet_soon" | "vet_now", '
+            '"steps": ["<concrete step>", ...up to 5]}. '
+            'urgency="vet_now" ONLY for signs of acute danger (injury, poisoning, seizure, '
+            'breathing trouble, heavy bleeding); "vet_soon" for worrying signs that can wait '
+            'a few days; otherwise "low". Never give a veterinary diagnosis. '
+            "Plain text only, no HTML. Write summary and steps in the reply language."
+            + _lang_instruction(lang)
         )
-
         contents = [
             types.Part.from_bytes(data=media_bytes, mime_type=mime_type),
-            types.Part.from_text(prompt),
+            types.Part.from_text(text=prompt),
         ]
-        try:
-            raw = await self._generate_text(kind="media_analysis", contents=contents)
-            return self._guard_html(raw, kind="media_analysis")
-        except Exception as e:
-            logger.warning("AI call failed: %s", e)
-            raise AiUnavailableError(str(e)) from e
+        verdict = await self._generate_structured(
+            kind="media_analysis", contents=contents, schema=MediaVerdict
+        )
+        if verdict is None:
+            raise AiUnavailableError("media verdict failed schema validation")
+        # No length cap here: a vet_now warning must never be truncated.
+        return self._guard_html(render_verdict(verdict, lang))
 
     async def answer_coach_question(
         self, pet: PetModel, history: str, lang: str = "ru", memory: str = ""
@@ -757,7 +764,7 @@ class AiService:
             contents: object = [
                 types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
                 types.Part.from_text(
-                    prompt + "User sent a voice message — transcribe and extract."
+                    text=prompt + "User sent a voice message — transcribe and extract."
                 ),
             ]
         else:
@@ -877,7 +884,7 @@ class AiService:
         if media_bytes and mime_type:
             contents: object = [
                 types.Part.from_bytes(data=media_bytes, mime_type=mime_type),
-                types.Part.from_text(prompt),
+                types.Part.from_text(text=prompt),
             ]
         else:
             contents = prompt + (f"\n\nСообщение: {text}" if text else "")

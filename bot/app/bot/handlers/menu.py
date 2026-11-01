@@ -920,10 +920,10 @@ async def process_coach_photo(
         await msg.answer(t("error.no_pet", lang))
         return
 
-    if not has_premium(usr) and not await rate_limiter.reserve(msg.from_user.id, usr.timezone):
+    if not has_premium(usr) and usr.media_trial_used_at is not None:
         await state.clear()
         await msg.answer(
-            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            t("coach.media.voice.premium", lang),
             reply_markup=_rate_limit_kb(lang),
             parse_mode="HTML",
         )
@@ -946,13 +946,23 @@ async def process_coach_photo(
     m = await msg.answer(t("coach.media.thinking", lang), parse_mode="HTML")
     bio = io.BytesIO()
     await msg.bot.download(msg.photo[-1], destination=bio)
+    trial_claimed = False
+    if not has_premium(usr):
+        trial_claimed = await u_svc.repo.claim_media_trial(usr.id)
+        if not trial_claimed:  # lost a race with a parallel photo
+            await m.edit_text(
+                t("coach.media.voice.premium", lang),
+                reply_markup=_rate_limit_kb(lang),
+                parse_mode="HTML",
+            )
+            return
     try:
         answer = await a_svc.analyze_media_question(
             pet, bio.getvalue(), "image/jpeg", caption, context, lang=lang
         )
     except Exception:
-        if not has_premium(usr):
-            await rate_limiter.release(msg.from_user.id, usr.timezone)
+        if trial_claimed:
+            await u_svc.repo.release_media_trial(usr.id)
         await m.edit_text(
             t("ai.fallback", lang), reply_markup=_ai_error_kb("menu_coach", lang), parse_mode="HTML"
         )
@@ -993,7 +1003,7 @@ async def process_coach_voice(
     usr = await u_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
     lang = normalize_locale(usr.language_code)
 
-    if not has_premium(usr):
+    if not has_premium(usr) and usr.media_trial_used_at is not None:
         await msg.answer(
             t("coach.media.voice.premium", lang),
             reply_markup=_rate_limit_kb(lang),
@@ -1023,11 +1033,23 @@ async def process_coach_voice(
     m = await msg.answer(t("coach.media.thinking", lang), parse_mode="HTML")
     bio = io.BytesIO()
     await msg.bot.download(msg.voice, destination=bio)
+    trial_claimed = False
+    if not has_premium(usr):
+        trial_claimed = await u_svc.repo.claim_media_trial(usr.id)
+        if not trial_claimed:
+            await m.edit_text(
+                t("coach.media.voice.premium", lang),
+                reply_markup=_rate_limit_kb(lang),
+                parse_mode="HTML",
+            )
+            return
     try:
         answer = await a_svc.analyze_media_question(
             pet, bio.getvalue(), "audio/ogg", None, context, lang=lang
         )
     except Exception:
+        if trial_claimed:
+            await u_svc.repo.release_media_trial(usr.id)
         await m.edit_text(
             t("ai.fallback", lang), reply_markup=_ai_error_kb("menu_coach", lang), parse_mode="HTML"
         )
@@ -1892,7 +1914,12 @@ async def handle_voice_action(
         await msg.answer(t("error.no_pet", lang), reply_markup=get_back_keyboard(lang))
         return
 
-    if not has_premium(usr) and not await rate_limiter.is_allowed(msg.from_user.id, usr.timezone):
+    has_media = bool(msg.voice or msg.photo)
+    if (
+        not has_premium(usr)
+        and not has_media
+        and not await rate_limiter.is_allowed(msg.from_user.id, usr.timezone)
+    ):
         await msg.answer(
             t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
             reply_markup=_rate_limit_kb(lang),
@@ -1906,8 +1933,8 @@ async def handle_voice_action(
     text_content: str | None = None
     is_media = bool(msg.voice or msg.photo)
 
-    if is_media and not has_premium(usr):
-        # Free users: no download, no Gemini call, no quota spent on media.
+    if is_media and not has_premium(usr) and usr.media_trial_used_at is not None:
+        # Trial already spent: no download, no Gemini call.
         await metrics.inc(BotMetrics.PREMIUM_GATE)
         await msg.answer(
             t("coach.media.voice.premium", lang),
@@ -1937,13 +1964,24 @@ async def handle_voice_action(
     today_tasks = tasks_for_today(active_plan)
     task_titles = [tk.title for tk in today_tasks]
 
-    if not has_premium(usr) and not await rate_limiter.reserve(msg.from_user.id, usr.timezone):
-        await msg.answer(
-            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
-            reply_markup=_rate_limit_kb(lang),
-            parse_mode="HTML",
-        )
-        return
+    trial_claimed = False
+    quota_reserved = False
+    if not has_premium(usr):
+        if is_media:
+            trial_claimed = await u_svc.repo.claim_media_trial(usr.id)
+        else:
+            quota_reserved = await rate_limiter.reserve(msg.from_user.id, usr.timezone)
+        if not (trial_claimed or quota_reserved):
+            await msg.answer(
+                t(
+                    "coach.media.voice.premium" if is_media else "ai.rate_limit",
+                    lang,
+                    limit=FREE_DAILY_LIMIT,
+                ),
+                reply_markup=_rate_limit_kb(lang),
+                parse_mode="HTML",
+            )
+            return
 
     m = await msg.answer(t("voice_action.thinking", lang), parse_mode="HTML")
 
@@ -1957,7 +1995,9 @@ async def handle_voice_action(
             mime_type=mime_type,
         )
     except Exception:
-        if not has_premium(usr):
+        if trial_claimed:
+            await u_svc.repo.release_media_trial(usr.id)
+        elif quota_reserved:
             await rate_limiter.release(msg.from_user.id, usr.timezone)
         await m.edit_text(
             t("ai.fallback", lang), reply_markup=_ai_error_kb("menu_main", lang), parse_mode="HTML"
@@ -1969,8 +2009,10 @@ async def handle_voice_action(
 
     if intent.get("_is_fallback"):
         await metrics.inc(BotMetrics.FALLBACK)
-        if not has_premium(usr):
-            await rate_limiter.release(msg.from_user.id, usr.timezone)  # AI failed: don't charge
+        if trial_claimed:
+            await u_svc.repo.release_media_trial(usr.id)  # AI failed: don't charge
+        elif quota_reserved:
+            await rate_limiter.release(msg.from_user.id, usr.timezone)
 
     if action == "mark_done" and task_titles:
         task, plan_done = await t_svc.mark_task_by_hint(pet, intent.get("task_hint", ""))

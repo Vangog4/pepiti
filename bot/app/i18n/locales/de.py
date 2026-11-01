@@ -375,6 +375,11 @@ STRINGS: dict[str, str] = {
     "report.weekly.stats": "📊 <b>Deine Woche, {name}</b>\n\n🐶 {pet}\n🏋️ Trainings: {days}\n🚶 Spaziergänge: {walks} ({minutes} Min)\n🔥 Serie: {streak} Tage\n\nStark! Am Montag kommt ein neuer Plan.",
     "menu.btn.more": "⚙️ Mehr",
     "menu.more.title": "Wähle einen Bereich 👇",
+    "media.verdict.vet_now": "🚨 <b>Heute zum Tierarzt</b>",
+    "media.verdict.vet_soon": "⚠️ <b>In den nächsten Tagen zum Tierarzt</b>",
+    "media.verdict.see": "🎯 <b>Was ich sehe:</b>",
+    "media.verdict.steps": "🛠 <b>Was zu tun ist:</b>",
+    "media.verdict.disclaimer": "<i>Das ist keine Diagnose und ersetzt keinen Tierarzt.</i>",
     "premium.refunded": (
         "✔ Deine Rückerstattung wurde verarbeitet. Premium-Abonnement deaktiviert.\n"
         "Wenn das ein Fehler ist, wende dich bitte an den Support."

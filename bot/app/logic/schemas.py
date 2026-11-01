@@ -5,7 +5,7 @@ Validate → retry/escalate → fallback. LLM must not invent shapes.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -192,3 +192,15 @@ class FactExtraction(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     facts: list[Fact] = Field(default_factory=list, max_length=5)
+
+
+class MediaVerdict(BaseModel):
+    """Strict result of analysing an owner's photo/voice/video of the dog."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    summary: str = Field(min_length=5, max_length=600)
+    urgency: Literal["low", "vet_soon", "vet_now"]
+    steps: list[Annotated[str, Field(min_length=3, max_length=200)]] = Field(
+        default_factory=list, max_length=5
+    )

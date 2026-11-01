@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import distinct, func, or_, select
+from sqlalchemy import distinct, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.db.models.training import TrainingPlanModel, TrainingTaskModel
@@ -151,3 +151,20 @@ class UserRepository:
             "active_today": active_today,
             "conversion_pct": conversion_pct,
         }
+
+    async def claim_media_trial(self, user_id: int) -> bool:
+        """Atomically spend the one free media analysis. False if already spent."""
+        res = await self.session.execute(
+            update(UserModel)
+            .where(UserModel.id == user_id, UserModel.media_trial_used_at.is_(None))
+            .values(media_trial_used_at=func.now())
+        )
+        await self.session.commit()
+        return res.rowcount == 1
+
+    async def release_media_trial(self, user_id: int) -> None:
+        """Give the trial back (the AI call failed, so it must not count)."""
+        await self.session.execute(
+            update(UserModel).where(UserModel.id == user_id).values(media_trial_used_at=None)
+        )
+        await self.session.commit()

@@ -398,6 +398,11 @@ STRINGS: dict[str, str] = {
     "report.weekly.stats": "📊 <b>Итоги недели, {name}</b>\n\n🐶 {pet}\n🏋️ Тренировок: {days}\n🚶 Прогулок: {walks} ({minutes} мин)\n🔥 Стрик: {streak} дн.\n\nОтличная работа! В понедельник новый план.",
     "menu.btn.more": "⚙️ Ещё",
     "menu.more.title": "Выбери раздел 👇",
+    "media.verdict.vet_now": "🚨 <b>К ветеринару сегодня</b>",
+    "media.verdict.vet_soon": "⚠️ <b>Покажи ветеринару в ближайшие дни</b>",
+    "media.verdict.see": "🎯 <b>Что вижу:</b>",
+    "media.verdict.steps": "🛠 <b>Что делать:</b>",
+    "media.verdict.disclaimer": "<i>Это не диагноз и не замена ветеринара.</i>",
     "premium.refunded": (
         "✔ Возврат средств обработан. Подписка Premium деактивирована.\n"
         "Если это ошибка — обратись в поддержку."
