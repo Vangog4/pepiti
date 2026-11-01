@@ -30,6 +30,7 @@ from app.core.container import AppContainer
 from app.core.shop import SHOP_URL_BY_SIZE, SHOP_URL_LONGPLAY, SHOP_URL_MAIN, SHOP_URL_TRAINING
 from app.core.shop_recommendations import AFTER_COMPLETION, AFTER_EXERCISE, get_shop_button
 from app.core.tasks import spawn
+from app.core.tz_utils import local_now
 from app.i18n import normalize_locale, pluralize, t
 from app.infrastructure.db.models.coach_thread import CoachThreadModel
 from app.infrastructure.db.models.training import TrainingPlanModel
@@ -2041,7 +2042,22 @@ async def handle_voice_action(
         elif quota_reserved:
             await rate_limiter.release(msg.from_user.id, usr.timezone)
 
-    if action == "mark_done" and task_titles:
+    walk_minutes = intent.get("walk_minutes")
+    walk_ok = (
+        action == "log_walk"
+        and isinstance(walk_minutes, int)
+        and not isinstance(walk_minutes, bool)
+        and 5 <= walk_minutes <= 240
+    )
+    if walk_ok:
+        today = local_now(usr.timezone).date()
+        await act_repo.log_walk(pet.id, today, walk_minutes)
+        streak_now = await streak_for(act_repo, pet, usr)
+        reply = t("voice_action.walk", lang, m=walk_minutes, n=streak_now)
+        if ai_message:
+            reply += "\n\n" + ai_message
+        kb = get_back_keyboard(lang)
+    elif action == "mark_done" and task_titles:
         task, plan_done = await t_svc.mark_task_by_hint(pet, intent.get("task_hint", ""))
         if task:
             await metrics.inc(BotMetrics.MARK_DONE)

@@ -27,7 +27,15 @@ logger = logging.getLogger(__name__)
 def create_scheduler(session_factory: async_sessionmaker, bot: Bot) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone="UTC")
 
-    scheduler.add_job(beat, "interval", seconds=30, id="heartbeat", replace_existing=True)
+    # First beat immediately so the healthcheck is green from second zero, not after 30 s.
+    scheduler.add_job(
+        beat,
+        "interval",
+        seconds=30,
+        id="heartbeat",
+        replace_existing=True,
+        next_run_time=datetime.now(UTC),
+    )
 
     # Safety net for money: grant Stars payments whose update was lost (outage, restart).
     scheduler.add_job(

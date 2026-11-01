@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 AGE_CATEGORIES = (
     "Щенок (до 4 мес)",
@@ -25,7 +25,7 @@ SIZE_CATEGORIES = (
 )
 
 Difficulty = Literal["easy", "medium", "hard"]
-IntentAction = Literal["mark_done", "none"]
+IntentAction = Literal["mark_done", "log_walk", "none"]
 
 
 class TaskSchema(BaseModel):
@@ -151,13 +151,32 @@ class TrainingIntentSchema(BaseModel):
 
     action: IntentAction = "none"
     task_hint: str | None = None
+    walk_minutes: int | None = None
     message: str = Field(min_length=1, max_length=2000)
 
     @field_validator("action", mode="before")
     @classmethod
     def normalize_action(cls, v: Any) -> str:
         s = str(v or "none").strip().lower()
-        return "mark_done" if s == "mark_done" else "none"
+        return s if s in ("mark_done", "log_walk") else "none"
+
+    @field_validator("walk_minutes", mode="before")
+    @classmethod
+    def coerce_minutes(cls, v: Any) -> int | None:
+        """Whole minutes in 5..240, otherwise None. Never guess a duration."""
+        if v is None or isinstance(v, bool):
+            return None
+        try:
+            minutes = int(float(str(v).strip().replace(",", ".")))
+        except ValueError:
+            return None
+        return minutes if 5 <= minutes <= 240 else None
+
+    @model_validator(mode="after")
+    def walk_needs_minutes(self) -> TrainingIntentSchema:
+        if self.action == "log_walk" and self.walk_minutes is None:
+            self.action = "none"
+        return self
 
     @field_validator("message", mode="before")
     @classmethod

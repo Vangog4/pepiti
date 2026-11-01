@@ -429,6 +429,7 @@ STRINGS: dict[str, str] = {
     "pdf.passport.history": "History",
     "pdf.passport.facts": "Known about the dog",
     "pdf.passport.disclaimer": "Generated {date} by Pepito (@pepitopetbot) from owner-reported data. Not a medical document.",
+    "voice_action.walk": "🚶 Walk logged: {m} min. Streak: {n} days.",
     "premium.refunded": (
         "✔ Your refund has been processed. Premium subscription deactivated.\n"
         "If this is an error, please contact support."
