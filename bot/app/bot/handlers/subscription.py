@@ -14,6 +14,7 @@ from app.infrastructure.db.models.user import UserModel
 from app.infrastructure.db.repositories.subscription_repo import SubscriptionRepository
 from app.infrastructure.db.repositories.user_repo import UserRepository
 from app.infrastructure.redis.funnel import track_soon
+from app.services import rub
 from app.services.entitlements import has_premium
 from app.services.gifts import parse_payload, target_telegram_id
 from app.services.pricing import allowed_stars, stars_for, variant_for
@@ -54,7 +55,7 @@ async def send_premium_invoice(
         await target.answer(
             title,
             reply_markup=types.InlineKeyboardMarkup(
-                inline_keyboard=[[types.InlineKeyboardButton(text=f"⭐ {product.stars}", url=link)]]
+                inline_keyboard=[[types.InlineKeyboardButton(text=f"⭐ {stars}", url=link)]]
             ),
         )
         return
@@ -65,6 +66,31 @@ async def send_premium_invoice(
         provider_token="",
         currency="XTR",
         prices=prices,
+    )
+
+
+async def send_rub_invoice(
+    target: types.Message, lang: str, product_code: str = "premium_1m"
+) -> None:
+    """Rubles via T-Bank (Telegram Payments). No-op unless fully configured (see rub.py)."""
+    product = get_product(product_code)
+    if product is None or not rub.rub_enabled():
+        return
+    title = t("premium.invoice.title", lang)
+    provider_data = rub.render_provider_data(product, title)
+    if provider_data is None:
+        return
+    track_soon("invoice", current_tg_id.get())
+    await target.answer_invoice(
+        title=title,
+        description=t("premium.invoice.description", lang),
+        payload=product.code,
+        provider_token=settings.TBANK_PROVIDER_TOKEN,
+        currency=rub.CURRENCY,
+        prices=[
+            types.LabeledPrice(label=t("premium.invoice.label", lang), amount=rub.kopecks(product))
+        ],
+        provider_data=provider_data,
     )
 
 
@@ -79,6 +105,16 @@ def _plans_keyboard(lang: str, user_id: int | None = None) -> types.InlineKeyboa
         ]
         for p in PRODUCTS.values()
     ]
+    if lang == "ru" and rub.rub_enabled():
+        rows += [
+            [
+                types.InlineKeyboardButton(
+                    text=t(f"premium.rub.{p.code}.btn", lang, rub=p.rub),
+                    callback_data=f"buyrub:{p.code}",
+                )
+            ]
+            for p in PRODUCTS.values()
+        ]
     rows.append([types.InlineKeyboardButton(text=t("gift.btn", lang), callback_data="gift_start")])
     rows.append(
         [
@@ -125,7 +161,9 @@ async def show_premium(
     )
 
 
-@router.callback_query(F.data.in_({"buy_premium"}) | F.data.startswith("buy:"))
+@router.callback_query(
+    F.data.in_({"buy_premium"}) | F.data.startswith("buy:") | F.data.startswith("buyrub:")
+)
 @inject
 async def send_invoice(
     cb: types.CallbackQuery,
@@ -134,7 +172,10 @@ async def send_invoice(
     await cb.answer()
     usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
     lang = normalize_locale(usr.language_code)
-    code = cb.data.split(":", 1)[1] if cb.data.startswith("buy:") else "premium_1m"
+    code = cb.data.split(":", 1)[1] if ":" in cb.data else "premium_1m"
+    if cb.data.startswith("buyrub:"):
+        await send_rub_invoice(cb.message, lang, code)
+        return
     await send_premium_invoice(cb.message, lang, code)
 
 
@@ -148,6 +189,17 @@ async def pre_checkout(
     parsed = parse_payload(pcq.invoice_payload)
     if parsed is None:
         await pcq.answer(ok=False, error_message="Unknown product")
+        return
+    if pcq.currency == rub.CURRENCY:
+        # Rubles: one-off purchases of a catalog product only (never a gift), exact kopecks.
+        if (
+            not rub.rub_enabled()
+            or parsed.is_gift
+            or pcq.total_amount != rub.kopecks(parsed.product)
+        ):
+            await pcq.answer(ok=False, error_message="Invalid amount")
+            return
+        await pcq.answer(ok=True)
         return
     if pcq.currency != "XTR":
         await pcq.answer(ok=False, error_message="Invalid currency")
@@ -185,6 +237,23 @@ async def successful_payment(
         )
         return
 
+    is_rub = payment.currency == rub.CURRENCY
+    if is_rub and (
+        not rub.rub_enabled()
+        or parsed.is_gift
+        or payment.total_amount != rub.kopecks(parsed.product)
+    ):
+        logger.error(
+            "RUB payment REJECTED payload=%r amount=%s user=%s charge=%s provider_charge=%s: "
+            "check with the provider / refund manually",
+            payment.invoice_payload,
+            payment.total_amount,
+            msg.from_user.id,
+            charge,
+            getattr(payment, "provider_payment_charge_id", None),
+        )
+        return
+
     payer = await u_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
     track_soon("paid", msg.from_user.id)
     target_tg = target_telegram_id(parsed, msg.from_user.id)
@@ -205,7 +274,8 @@ async def successful_payment(
         telegram_id=target_tg,
         charge_id=charge,
         days=parsed.product.days,
-        plan_code=parsed.product.code,
+        plan_code=rub.rub_plan_code(parsed.product) if is_rub else parsed.product.code,
+        provider=rub.PROVIDER if is_rub else "telegram_stars",
     )
     logger.info(
         "Premium activated for user %s (charge %s, gift=%s)", target_tg, charge, parsed.is_gift

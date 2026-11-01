@@ -459,6 +459,9 @@ STRINGS: dict[str, str] = {
     "weight.ask": "Envía el nuevo peso en kg, p. ej. 12,5",
     "weight.saved": "✅ Guardado: {kg} kg",
     "weight.nudge": "⚖️ Toca pesar a {pet}: una vez al mes basta. Son 10 segundos.",
+    "premium.rub.premium_1m.btn": "1 mes · {rub}₽",
+    "premium.rub.premium_3m.btn": "3 mes · {rub}₽",
+    "premium.rub.premium_12m.btn": "12 mes · {rub}₽",
     "premium.refunded": (
         "✔ Tu reembolso ha sido procesado. Suscripción Premium desactivada.\n"
         "Si esto es un error, por favor contacta al soporte."

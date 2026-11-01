@@ -185,3 +185,20 @@ async def test_admin_funnel_has_no_ab_block_when_disabled(monkeypatch):
     cb.message.edit_text = AsyncMock()
     await ah.admin_funnel(cb)
     assert "A/B" not in cb.message.edit_text.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_subscription_button_shows_the_price_actually_charged(ab_on, monkeypatch):
+    """Regression: the recurring plan's button showed the catalog price while the invoice
+    charged the user's A/B variant price."""
+    from app.bot.handlers import subscription as sh
+
+    monkeypatch.setattr(pricing, "variant_for", lambda uid: "B")
+    target = MagicMock()
+    target.chat.id = 5
+    target.bot.create_invoice_link = AsyncMock(return_value="https://t.me/invoice/x")
+    target.answer = AsyncMock()
+    await sh.send_premium_invoice(target, "ru", "premium_1m")
+    assert target.bot.create_invoice_link.await_args.kwargs["prices"][0].amount == 800
+    button = target.answer.await_args.kwargs["reply_markup"].inline_keyboard[0][0]
+    assert "800" in button.text and "950" not in button.text

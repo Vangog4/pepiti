@@ -24,6 +24,7 @@ class SubscriptionService:
         *,
         days: int | None = None,
         plan_code: str = "premium_1m",
+        provider: str = "telegram_stars",
     ) -> SubscriptionModel:
         """Activate paid premium, stacking on remaining paid/referral days.
 
@@ -46,6 +47,7 @@ class SubscriptionService:
                 expires_at=expires_at,
                 charge_id=charge_id,
                 plan_code=plan_code,
+                provider=provider,
             )
         except IntegrityError:
             # Concurrent duplicate update lost the race on the UNIQUE(charge_id) index.

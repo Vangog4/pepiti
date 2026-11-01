@@ -36,6 +36,8 @@ def renewal_stage(expires_at: datetime, tz: str | None, now_utc: datetime) -> in
 
 def is_one_time_pack(plan_code: str | None) -> bool:
     """Auto-renewing Stars subscriptions renew themselves; referral/admin grants are gifts."""
+    if plan_code and plan_code.endswith("_rub"):  # rubles are always a one-off, even for 30 days
+        return get_product(plan_code[: -len("_rub")]) is not None
     product = get_product(plan_code)
     return product is not None and not product.recurring
 
@@ -120,7 +122,7 @@ async def send_renewal_reminders(
                         select(SubscriptionModel)
                         .where(
                             SubscriptionModel.user_id == user.id,
-                            SubscriptionModel.provider == "telegram_stars",
+                            SubscriptionModel.provider.in_(("telegram_stars", "tbank")),
                             SubscriptionModel.status == "active",
                         )
                         .order_by(SubscriptionModel.expires_at.desc())
@@ -285,7 +287,7 @@ async def send_winback(
                         select(SubscriptionModel)
                         .where(
                             SubscriptionModel.user_id == user.id,
-                            SubscriptionModel.provider == "telegram_stars",
+                            SubscriptionModel.provider.in_(("telegram_stars", "tbank")),
                         )
                         .order_by(SubscriptionModel.expires_at.desc())
                         .limit(1)

@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # Web App — public HTTPS URL shown in Telegram WebAppInfo button.
     # Telegram requires HTTPS in production; leave empty to hide the button.
     WEBAPP_PUBLIC_URL: str = ""
+    # Rubles via T-Bank (Telegram Payments). Both must be set, otherwise rubles stay off.
+    TBANK_PROVIDER_TOKEN: str = ""
+    TBANK_PROVIDER_DATA: str = ""  # receipt provider_data JSON template, see app/services/rub.py
     SUPPORT_CONTACT: str = ""  # e.g. "@your_support"; shown in /paysupport when set
     # Internal bind address for the aiohttp HTTP server.
     WEBAPP_BIND_HOST: str = "0.0.0.0"
