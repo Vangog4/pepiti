@@ -163,3 +163,13 @@ class TrainingIntentSchema(BaseModel):
     @classmethod
     def strip_message(cls, v: Any) -> str:
         return str(v or "").strip()[:2000]
+
+
+class BreedGuess(BaseModel):
+    """Strict result of guessing a dog breed from a photo (onboarding step 3)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    is_dog: bool
+    breed: str = Field(min_length=2, max_length=60)
+    confidence: float = Field(ge=0.0, le=1.0)

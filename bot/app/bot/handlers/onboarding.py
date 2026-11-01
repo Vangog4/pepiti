@@ -3,11 +3,20 @@ import logging
 from datetime import datetime
 
 from aiogram import F, Router, types
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardRemove
 from dependency_injector.wiring import Provide, inject
 
 from app.bot.keyboards.main_menu import get_main_menu
+from app.bot.keyboards.onboarding import (
+    AGES,
+    BREEDS,
+    GOALS,
+    age_kb,
+    breed_kb,
+    confirm_breed_kb,
+    goal_kb,
+)
 from app.bot.keyboards.training import get_task_keyboard
 from app.bot.states.onboarding import OnboardingStates
 from app.core.config import settings
@@ -30,19 +39,9 @@ logger = logging.getLogger(__name__)
 router = Router(name="onboarding_router")
 
 
-def _profile_summary(profile: dict) -> str:
-    parts = []
-    if profile.get("name"):
-        parts.append(profile["name"])
-    if profile.get("breed"):
-        parts.append(profile["breed"])
-    if profile.get("age_category"):
-        parts.append(profile["age_category"])
-    return ", ".join(parts)
-
-
 async def _finish_onboarding(
     msg: types.Message,
+    tg_id: int,
     state: FSMContext,
     profile: dict,
     state_data: dict,
@@ -52,7 +51,7 @@ async def _finish_onboarding(
     t_svc: TrainingService,
     lang: str,
 ) -> None:
-    user = await user_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
+    user = await user_svc.get_or_create_telegram_user(telegram_id=tg_id)
 
     pet = PetModel(
         user_id=user.id,
@@ -126,103 +125,176 @@ async def _finish_onboarding(
         )
 
 
-async def _handle_message(
+def _clean_name(text: str | None) -> str | None:
+    name = " ".join((text or "").split())[:40]
+    return name or None
+
+
+@router.message(OnboardingStates.collecting, F.text)
+@inject
+async def step_name(
     msg: types.Message,
     state: FSMContext,
-    user_svc: UserService,
-    pet_svc: PetService,
-    ref_svc: ReferralService,
-    t_svc: TrainingService,
-    ai_svc: AiService,
-    is_clarification: bool,
+    user_svc: UserService = Provide[AppContainer.user_service],
 ) -> None:
-    # Photo without caption → ask for text/voice description
-    if msg.photo and not msg.caption:
-        user = await user_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
-        lang = normalize_locale(user.language_code)
-        await msg.answer(t("onboarding.ai.photo_prompt", lang), reply_markup=ReplyKeyboardRemove())
-        return
-
-    audio_bytes: bytes | None = None
-    mime_type: str | None = None
-    if msg.voice:
-        bio = io.BytesIO()
-        await msg.bot.download(msg.voice, destination=bio)
-        audio_bytes = bio.getvalue()
-        mime_type = "audio/ogg"
-
-    text = msg.text or msg.caption
-    state_data = await state.get_data()
-    partial = state_data.get("partial_profile") if is_clarification else None
-
     user = await user_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
     lang = normalize_locale(user.language_code)
-
-    thinking = await msg.answer(
-        t("onboarding.ai.thinking", lang), reply_markup=ReplyKeyboardRemove()
-    )
-
-    profile = await ai_svc.extract_pet_profile(
-        language_code=lang,
-        text=text,
-        audio_bytes=audio_bytes,
-        mime_type=mime_type,
-        partial=partial,
-    )
-
-    await thinking.delete()
-
-    missing = profile.get("missing_fields", [])
-
-    # On first attempt: if fields are missing, ask one clarifying question
-    if missing and not is_clarification:
-        await state.update_data(partial_profile=profile)
-        await state.set_state(OnboardingStates.clarifying)
-
-        clarify_q = profile.get("clarify_question") or t(
-            f"onboarding.ai.clarify.{missing[0]}", lang
-        )
-        summary = _profile_summary(profile)
-        if summary:
-            reply = t("onboarding.ai.clarify", lang, summary=summary, question=clarify_q)
-        else:
-            reply = clarify_q
-        await msg.answer(reply, reply_markup=ReplyKeyboardRemove())
+    name = _clean_name(msg.text)
+    if not name or name.startswith("/"):
+        await msg.answer(t("onboarding.name.need_text", lang))
         return
+    await state.update_data(name=name)
+    await state.set_state(OnboardingStates.age)
+    await msg.answer(
+        t("onboarding.q.age", lang, name=name), reply_markup=age_kb(lang), parse_mode="HTML"
+    )
 
-    # Complete onboarding (either all fields present, or second attempt regardless)
+
+@router.message(OnboardingStates.collecting)
+@inject
+async def step_name_not_text(
+    msg: types.Message, user_svc: UserService = Provide[AppContainer.user_service]
+) -> None:
+    user = await user_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
+    await msg.answer(t("onboarding.name.need_text", normalize_locale(user.language_code)))
+
+
+@router.callback_query(OnboardingStates.age, F.data.startswith("ob_age:"))
+@inject
+async def step_age(
+    cb: types.CallbackQuery,
+    state: FSMContext,
+    user_svc: UserService = Provide[AppContainer.user_service],
+) -> None:
+    await cb.answer()
+    age = AGES.get(cb.data.split(":", 1)[1])
+    if age is None:
+        return
+    user = await user_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
+    lang = normalize_locale(user.language_code)
+    await state.update_data(age_category=age)
+    await state.set_state(OnboardingStates.breed)
+    await cb.message.edit_text(t("onboarding.q.breed", lang), reply_markup=breed_kb(lang))
+
+
+@router.callback_query(OnboardingStates.breed, F.data.startswith("ob_breed:"))
+@router.callback_query(OnboardingStates.breed_text, F.data.startswith("ob_breed:"))
+@inject
+async def step_breed(
+    cb: types.CallbackQuery,
+    state: FSMContext,
+    user_svc: UserService = Provide[AppContainer.user_service],
+) -> None:
+    await cb.answer()
+    user = await user_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
+    lang = normalize_locale(user.language_code)
+    choice = cb.data.split(":", 1)[1]
+    if choice in ("other", "photo"):
+        await state.set_state(OnboardingStates.breed_text)
+        await cb.message.edit_text(t("onboarding.q.breed_text", lang))
+        return
+    if choice == "yes":
+        breed = (await state.get_data()).get("guessed_breed")
+    elif choice.isdigit() and int(choice) < len(BREEDS):
+        breed = BREEDS[int(choice)][1]
+    else:
+        return
+    await _ask_goal(cb.message, state, lang, breed)
+
+
+async def _ask_goal(target: types.Message, state: FSMContext, lang: str, breed: str | None) -> None:
+    await state.update_data(breed=breed)
+    await state.set_state(OnboardingStates.goal)
+    text = t("onboarding.q.goal", lang)
+    try:
+        await target.edit_text(text, reply_markup=goal_kb(lang))
+    except Exception:  # message is not ours to edit (typed answer): send a new one
+        await target.answer(text, reply_markup=goal_kb(lang))
+
+
+@router.message(OnboardingStates.breed_text, F.text)
+@inject
+async def step_breed_typed(
+    msg: types.Message,
+    state: FSMContext,
+    user_svc: UserService = Provide[AppContainer.user_service],
+) -> None:
+    user = await user_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
+    lang = normalize_locale(user.language_code)
+    breed = " ".join((msg.text or "").split())[:60]
+    if not breed or breed.startswith("/"):
+        await msg.answer(t("onboarding.q.breed_text", lang))
+        return
+    await _ask_goal(msg, state, lang, breed)
+
+
+@router.message(OnboardingStates.breed_text, F.photo)
+@router.message(OnboardingStates.breed, F.photo)
+@inject
+async def step_breed_photo(
+    msg: types.Message,
+    state: FSMContext,
+    user_svc: UserService = Provide[AppContainer.user_service],
+    ai_svc: AiService = Provide[AppContainer.ai_service],
+) -> None:
+    user = await user_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
+    lang = normalize_locale(user.language_code)
+    bio = io.BytesIO()
+    await msg.bot.download(msg.photo[-1], destination=bio)
+    try:
+        guess = await ai_svc.guess_breed(bio.getvalue())
+    except Exception:
+        guess = None
+    if guess is None:
+        await state.set_state(OnboardingStates.breed_text)
+        await msg.answer(t("onboarding.photo.fail", lang))
+        return
+    await state.update_data(guessed_breed=guess.breed)
+    await state.set_state(OnboardingStates.breed_text)
+    await msg.answer(
+        t("onboarding.photo.guess", lang, breed=guess.breed),
+        reply_markup=confirm_breed_kb(lang, guess.breed),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(OnboardingStates.goal, F.data.startswith("ob_goal:"))
+@inject
+async def step_goal(
+    cb: types.CallbackQuery,
+    state: FSMContext,
+    user_svc: UserService = Provide[AppContainer.user_service],
+    pet_svc: PetService = Provide[AppContainer.pet_service],
+    ref_svc: ReferralService = Provide[AppContainer.referral_service],
+    t_svc: TrainingService = Provide[AppContainer.training_service],
+) -> None:
+    await cb.answer()
+    goal = GOALS.get(cb.data.split(":", 1)[1])
+    if goal is None:
+        return
+    data = await state.get_data()
+    user = await user_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
+    lang = normalize_locale(user.language_code)
+    profile = {
+        "name": data.get("name"),
+        "age_category": data.get("age_category"),
+        "breed": data.get("breed"),
+        "goal": goal,
+    }
     await _finish_onboarding(
-        msg, state, profile, state_data, user_svc, pet_svc, ref_svc, t_svc, lang
+        cb.message, cb.from_user.id, state, profile, data, user_svc, pet_svc, ref_svc, t_svc, lang
     )
 
 
-@router.message(OnboardingStates.collecting, F.text | F.voice | F.photo)
+@router.message(StateFilter("OnboardingStates:clarifying"))
 @inject
-async def process_collecting(
+async def legacy_clarifying_restart(
     msg: types.Message,
     state: FSMContext,
     user_svc: UserService = Provide[AppContainer.user_service],
-    pet_svc: PetService = Provide[AppContainer.pet_service],
-    ref_svc: ReferralService = Provide[AppContainer.referral_service],
-    t_svc: TrainingService = Provide[AppContainer.training_service],
-    ai_svc: AiService = Provide[AppContainer.ai_service],
 ) -> None:
-    await _handle_message(
-        msg, state, user_svc, pet_svc, ref_svc, t_svc, ai_svc, is_clarification=False
-    )
-
-
-@router.message(OnboardingStates.clarifying, F.text | F.voice)
-@inject
-async def process_clarifying(
-    msg: types.Message,
-    state: FSMContext,
-    user_svc: UserService = Provide[AppContainer.user_service],
-    pet_svc: PetService = Provide[AppContainer.pet_service],
-    ref_svc: ReferralService = Provide[AppContainer.referral_service],
-    t_svc: TrainingService = Provide[AppContainer.training_service],
-    ai_svc: AiService = Provide[AppContainer.ai_service],
-) -> None:
-    await _handle_message(
-        msg, state, user_svc, pet_svc, ref_svc, t_svc, ai_svc, is_clarification=True
-    )
+    """Users parked in the removed AI-dialog state: restart them on the button flow."""
+    user = await user_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
+    await state.clear()
+    await state.set_state(OnboardingStates.collecting)
+    await msg.answer(t("onboarding.q.name", normalize_locale(user.language_code)))

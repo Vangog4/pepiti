@@ -13,6 +13,7 @@ from app.infrastructure.redis.metrics import BotMetrics
 from app.logic.cascade import ModelCascade
 from app.logic.rules import contains_forbidden, get_rules, rule
 from app.logic.schemas import (
+    BreedGuess,
     PetProfileSchema,
     TrainingIntentSchema,
     TrainingPlanSchema,
@@ -775,6 +776,27 @@ class AiService:
         ]
         result["clarify_question"] = None
         return result
+
+    async def guess_breed(
+        self, photo_bytes: bytes, mime_type: str = "image/jpeg"
+    ) -> BreedGuess | None:
+        """Guess breed from a photo. None if it is not a dog, unsure, or the AI is down."""
+        prompt = (
+            "Look at the photo. Return ONLY JSON: "
+            '{"is_dog": true, "breed": "<common breed name in Russian, 1-3 words; '
+            '\'Метис\' for mixed>", "confidence": 0.0-1.0}. '
+            'If there is no dog in the photo, set is_dog=false, breed="-", confidence=0.'
+        )
+        contents = [
+            types.Part.from_bytes(data=photo_bytes, mime_type=mime_type),
+            types.Part.from_text(text=prompt),
+        ]
+        guess = await self._generate_structured(
+            kind="extract_profile", contents=contents, schema=BreedGuess
+        )
+        if guess is None or not guess.is_dog or guess.confidence < 0.5:
+            return None
+        return guess
 
     async def detect_training_intent(
         self,

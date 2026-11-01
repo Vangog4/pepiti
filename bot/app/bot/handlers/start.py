@@ -104,7 +104,7 @@ async def cmd_start(
         return
 
     await message.answer(
-        t("onboarding.ai.welcome", lang, name=message.from_user.first_name),
+        t("onboarding.q.name", lang),
         parse_mode="HTML",
         reply_markup=ReplyKeyboardRemove(),
     )
