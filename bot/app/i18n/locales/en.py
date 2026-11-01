@@ -78,11 +78,11 @@ STRINGS: dict[str, str] = {
         "Start with the daily plan — Pepito will build the weekly plan "
         "once you have some progress!"
     ),
-    "training.week.empty.cta.btn": "🏋️ Today's training",
+    "training.week.empty.cta.btn": "🏋️ Training",
     "training.explain.btn": "📖 Explain",
     "training.refresh.btn": "🔄 New plan",
     "training.explain.loading": "🔍 <i>Explaining exercise «{title}»...</i>",
-    "training.explain.back_daily.btn": "🔙 Back to training",
+    "training.explain.back_daily.btn": "🔙 Plan",
     "training.explain.back_weekly.btn": "🔙 Back to plan",
     "training.task.not_found": "Task not found.",
     "training.plan.not_found": "Plan not found.",
@@ -141,7 +141,7 @@ STRINGS: dict[str, str] = {
     "ai.analyzing.free": "🧠 <i>Analysing progress...</i>",
     "ai.progress.premium.header": "⭐ <b>In-depth analysis for {name}</b>\n\n",
     "ai.progress.free.header": "📈 <b>Progress analysis for {name}</b>\n\n",
-    "ai.progress.back.btn": "🔙 Back to stats",
+    "ai.progress.back.btn": "🔙 Stats",
     "ai.retry.btn": "🔄 Retry",
     "ai.back_menu.btn": "🔙 Menu",
     "coach.entry": (
@@ -186,8 +186,8 @@ STRINGS: dict[str, str] = {
     "stats.completed": "{emoji} Sessions completed: <b>{n}</b>\n\n",
     "stats.level": "🏆 Obedience level: <b>{level}</b>\n\n",
     "stats.motivate": "<i>Every session makes {name} better!</i> 🚀",
-    "stats.analysis.premium.btn": "🧠 In-depth AI analysis ⭐",
-    "stats.analysis.free.btn": "🧠 AI progress analysis",
+    "stats.analysis.premium.btn": "🧠 AI Pro ⭐",
+    "stats.analysis.free.btn": "🧠 AI analysis",
     # ── Profile ────────────────────────────────────────────────────────────────
     "profile.header": "🐾 <b>{name}</b>\n\n",
     "profile.breed": "🐕 Breed: {val}\n",
@@ -204,7 +204,7 @@ STRINGS: dict[str, str] = {
     "profile.weight.unknown": "not specified",
     "profile.issues.none": "none",
     "profile.schedule.unknown": "not specified",
-    "profile.edit.btn": "✏️ Edit profile",
+    "profile.edit.btn": "✏️ Edit",
     # ── Shop ───────────────────────────────────────────────────────────────────
     "shop.title": "🛒 <b>PepitoPet Shop</b>",
     "shop.body": (
@@ -212,9 +212,9 @@ STRINGS: dict[str, str] = {
         "no additives or preservatives, real meat only.\n\n"
         "Choose a category:"
     ),
-    "shop.cat.training.btn": "🎯 Training treats",
-    "shop.cat.longplay.btn": "🦴 Long-lasting chews",
-    "shop.cat.by_size.btn": "🐶 Puppies & by size",
+    "shop.cat.training.btn": "🎯 Training",
+    "shop.cat.longplay.btn": "🦴 Chews",
+    "shop.cat.by_size.btn": "🐶 By size",
     "shop.cat.all.btn": "🛒 Full shop",
     "shop.rec.puppy_named": "🐶 Puppy treats — for {name}",
     "shop.rec.small_named": "🐶 Treats for small breeds — for {name}",
@@ -273,7 +273,7 @@ STRINGS: dict[str, str] = {
         "🎁 Personalised treat recommendations\n\n"
         "<b>{price} Stars</b> / month · or invite 3 friends — free"
     ),
-    "premium.upsell.btn": "⭐ Get Premium for {price} Stars",
+    "premium.upsell.btn": "⭐ {price} Stars",
     "premium.invoice.title": "Pepito Premium — 1 month",
     "premium.invoice.description": "Unlimited AI trainer, detailed reports and in-depth behaviour analysis.",
     "premium.invoice.label": "Premium 1 month",
@@ -485,12 +485,12 @@ STRINGS: dict[str, str] = {
     "reminder.error.format": (
         "⚠️ Invalid format. Enter time as <code>HH:MM</code>, e.g. <code>09:30</code>."
     ),
-    "reminder.enable.btn": "🔔 Enable reminders",
+    "reminder.enable.btn": "🔔 Turn on",
     "reminder.change.btn": "✏️ Change time",
     "reminder.disable.btn": "🔕 Disable",
-    "reminder.back.btn": "🔙 Back to reminders",
+    "reminder.back.btn": "🔙 Back",
     "reminder.back_settings.btn": "🔙 Back",
-    "reminder.settings.btn": "⏰ Reminder settings",
+    "reminder.settings.btn": "🔔 Reminders",
     "reminder.menu.btn": "🔙 Menu",
     "reminder.tz_missing": "⚠️ <b>Timezone not set</b> — using UTC+0. Set it so reminders arrive at the right time.",
     "reminder.tz_change.btn": "🌍 Set timezone",
@@ -530,9 +530,9 @@ STRINGS: dict[str, str] = {
         "🎁 Personalised treat recommendations with your pet's name\n\n"
     ),
     "help.guide.commands": "<b>Commands:</b> /menu · /start · /reset",
-    "help.support.btn": "💬 Contact support",
+    "help.support.btn": "💬 Support",
     "help.btn": "❓ Help",
-    "help.back_settings.btn": "🔙 Back to settings",
+    "help.back_settings.btn": "🔙 Settings",
     # ── Edit Profile ───────────────────────────────────────────────────────────
     "edit_profile.title": "✏️ <b>Edit Profile</b>\n\nWhat would you like to change?",
     "edit_profile.field.name.prompt": "Enter the new pet name in the chat:",

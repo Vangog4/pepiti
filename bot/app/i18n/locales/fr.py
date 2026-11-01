@@ -81,12 +81,12 @@ STRINGS: dict[str, str] = {
         "Commencez par le plan quotidien — Pepito créera le plan hebdomadaire "
         "une fois que vous aurez un peu de progression !"
     ),
-    "training.week.empty.cta.btn": "🏋️ Entraînement du jour",
+    "training.week.empty.cta.btn": "🏋️ Séance",
     "training.explain.btn": "📖 Expliquer",
     "training.refresh.btn": "🔄 Nouveau plan",
     "training.explain.loading": "🔍 <i>Explication de l'exercice «{title}»...</i>",
-    "training.explain.back_daily.btn": "🔙 Retour à l'entraînement",
-    "training.explain.back_weekly.btn": "🔙 Retour au plan",
+    "training.explain.back_daily.btn": "🔙 Plan",
+    "training.explain.back_weekly.btn": "🔙 Semaine",
     "training.task.not_found": "Tâche introuvable.",
     "training.plan.not_found": "Plan introuvable.",
     "training.task.toggle.done": "✅ Fait !",
@@ -146,7 +146,7 @@ STRINGS: dict[str, str] = {
     "ai.analyzing.free": "🧠 <i>Analyse de la progression...</i>",
     "ai.progress.premium.header": "⭐ <b>Analyse approfondie pour {name}</b>\n\n",
     "ai.progress.free.header": "📈 <b>Analyse de progression pour {name}</b>\n\n",
-    "ai.progress.back.btn": "🔙 Retour aux stats",
+    "ai.progress.back.btn": "🔙 Stats",
     "ai.retry.btn": "🔄 Réessayer",
     "ai.back_menu.btn": "🔙 Menu",
     "coach.entry": (
@@ -191,8 +191,8 @@ STRINGS: dict[str, str] = {
     "stats.completed": "{emoji} Séances terminées : <b>{n}</b>\n\n",
     "stats.level": "🏆 Niveau d'obéissance : <b>{level}</b>\n\n",
     "stats.motivate": "<i>Chaque séance améliore {name} !</i> 🚀",
-    "stats.analysis.premium.btn": "🧠 Analyse IA approfondie ⭐",
-    "stats.analysis.free.btn": "🧠 Analyse IA de progression",
+    "stats.analysis.premium.btn": "🧠 IA Pro ⭐",
+    "stats.analysis.free.btn": "🧠 Analyse IA",
     # ── Profile ────────────────────────────────────────────────────────────────
     "profile.header": "🐾 <b>{name}</b>\n\n",
     "profile.breed": "🐕 Race : {val}\n",
@@ -209,7 +209,7 @@ STRINGS: dict[str, str] = {
     "profile.weight.unknown": "non spécifié",
     "profile.issues.none": "aucun",
     "profile.schedule.unknown": "non spécifié",
-    "profile.edit.btn": "✏️ Modifier le profil",
+    "profile.edit.btn": "✏️ Modifier",
     # ── Shop ───────────────────────────────────────────────────────────────────
     "shop.title": "🛒 <b>Boutique PepitoPet</b>",
     "shop.body": (
@@ -217,10 +217,10 @@ STRINGS: dict[str, str] = {
         "sans additifs ni conservateurs, uniquement de la vraie viande.\n\n"
         "Choisissez une catégorie :"
     ),
-    "shop.cat.training.btn": "🎯 Friandises d'entraînement",
-    "shop.cat.longplay.btn": "🦴 Mâchouilles longue durée",
-    "shop.cat.by_size.btn": "🐶 Chiots & par taille",
-    "shop.cat.all.btn": "🛒 Toute la boutique",
+    "shop.cat.training.btn": "🎯 Dressage",
+    "shop.cat.longplay.btn": "🦴 Durables",
+    "shop.cat.by_size.btn": "🐶 Par taille",
+    "shop.cat.all.btn": "🛍 Tout",
     "shop.rec.puppy_named": "🐶 Friandises chiot — pour {name}",
     "shop.rec.small_named": "🐶 Friandises petites races — pour {name}",
     "shop.rec.puppy_small_free": "🐶 Friandises pour chiots et petits chiens",
@@ -237,7 +237,7 @@ STRINGS: dict[str, str] = {
     "invite.count": "👥 Invités : <b>{n}</b>",
     "invite.next": "🎯 Jusqu'à la prochaine récompense : encore <b>{n}</b>",
     "invite.all_done": "👑 <b>Toutes les récompenses obtenues ! Vous êtes une légende !</b>",
-    "invite.share.btn": "📤 Partager le lien",
+    "invite.share.btn": "📤 Partager",
     "invite.share.text": "J'entraîne mon animal avec Pepito coach IA 🐾",
     "invite.base_tier": "1 ami      — +{days} jours Premium (pour les deux)",
     "invite.goal": "🎯 Encore {needed} pour {next_label} ({reward})",
@@ -278,7 +278,7 @@ STRINGS: dict[str, str] = {
         "🎁 Recommandations personnalisées de friandises\n\n"
         "<b>{price} Stars</b> / mois · ou invite 3 amis — gratuit"
     ),
-    "premium.upsell.btn": "⭐ Obtenir Premium pour {price} Stars",
+    "premium.upsell.btn": "⭐ {price} Stars",
     "premium.invoice.title": "Pepito Premium — 1 mois",
     "premium.invoice.description": "Coach IA illimité, rapports détaillés et analyse comportementale approfondie.",
     "premium.invoice.label": "Premium 1 mois",
@@ -490,15 +490,15 @@ STRINGS: dict[str, str] = {
     "reminder.error.format": (
         "⚠️ Format invalide. Entrez l'heure comme <code>HH:MM</code>, ex. <code>09:30</code>."
     ),
-    "reminder.enable.btn": "🔔 Activer les rappels",
-    "reminder.change.btn": "✏️ Changer l'heure",
+    "reminder.enable.btn": "🔔 Activer",
+    "reminder.change.btn": "✏️ Heure",
     "reminder.disable.btn": "🔕 Désactiver",
-    "reminder.back.btn": "🔙 Retour aux rappels",
+    "reminder.back.btn": "🔙 Retour",
     "reminder.back_settings.btn": "🔙 Retour",
-    "reminder.settings.btn": "⏰ Paramètres des rappels",
+    "reminder.settings.btn": "🔔 Rappels",
     "reminder.menu.btn": "🔙 Menu",
     "reminder.tz_missing": "⚠️ <b>Fuseau horaire non défini</b> — UTC+0 est utilisé. Définis-le pour recevoir les rappels au bon moment.",
-    "reminder.tz_change.btn": "🌍 Définir le fuseau horaire",
+    "reminder.tz_change.btn": "🌍 Fuseau",
     "reminder.push.friend": "ami",
     "reminder.push.text": "🐾 Salut, {name} !\n\nN'oublie pas d'entraîner ton animal aujourd'hui. Ouvre /menu pour voir le plan.",
     "report.weekly.premium": (
@@ -535,9 +535,9 @@ STRINGS: dict[str, str] = {
         "🎁 Recommandations personnalisées avec le nom de votre animal\n\n"
     ),
     "help.guide.commands": "<b>Commandes :</b> /menu · /start · /reset",
-    "help.support.btn": "💬 Contacter le support",
+    "help.support.btn": "💬 Support",
     "help.btn": "❓ Aide",
-    "help.back_settings.btn": "🔙 Retour aux paramètres",
+    "help.back_settings.btn": "🔙 Réglages",
     # ── Edit Profile ───────────────────────────────────────────────────────────
     "edit_profile.title": "✏️ <b>Modifier le profil</b>\n\nQue souhaitez-vous modifier ?",
     "edit_profile.field.name.prompt": "Entrez le nouveau nom de l'animal dans le chat :",
@@ -548,7 +548,7 @@ STRINGS: dict[str, str] = {
     "edit_profile.field.size.prompt": "Choisissez la nouvelle taille de l'animal :",
     "edit_profile.field.timezone.prompt": "🌍 Choisissez votre fuseau horaire :",
     "edit_profile.saved": "✅ Mis à jour : <b>{value}</b>",
-    "edit_profile.edit_more.btn": "✏️ Modifier encore",
+    "edit_profile.edit_more.btn": "✏️ Encore",
     "edit_profile.error.empty": "⚠️ Le champ ne peut pas être vide. Réessayez.",
     "edit_profile.error.too_long": "⚠️ Valeur trop longue — 50 caractères max (le vôtre : {n}).",
     "edit_profile.btn.name": "🐾 Nom",
@@ -557,7 +557,7 @@ STRINGS: dict[str, str] = {
     "edit_profile.btn.level": "🎓 Niveau",
     "edit_profile.btn.age": "🎂 Âge",
     "edit_profile.btn.size": "📏 Taille",
-    "edit_profile.btn.timezone": "🌍 Fuseau horaire",
+    "edit_profile.btn.timezone": "🕒 Fuseau",
     "edit_profile.cancel.btn": "🔙 Annuler",
     "edit_profile.level.1": "1 — Ne connaît aucune commande",
     "edit_profile.level.2": "2 — Connaît les bases (assis, debout)",

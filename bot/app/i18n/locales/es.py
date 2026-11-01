@@ -34,7 +34,7 @@ STRINGS: dict[str, str] = {
     "settings.language.saved": "✅ Idioma cambiado a <b>{name}</b>.",
     "settings.language.btn": "🌐 Idioma",
     "settings.btn": "⚙️ Ajustes",
-    "settings.reminder.btn": "⏰ Recordatorios",
+    "settings.reminder.btn": "🔔 Avisos",
     # ── Onboarding (Stage 9: conversational AI) ────────────────────────────────
     "onboarding.start.returning": "¡Bienvenido/a de vuelta, {name}! 🐾\n¿Qué hacemos hoy?",
     "onboarding.ai.welcome": (
@@ -80,12 +80,12 @@ STRINGS: dict[str, str] = {
         "Empieza con el plan diario — Pepito creará el plan semanal "
         "¡una vez que tengas algo de progreso!"
     ),
-    "training.week.empty.cta.btn": "🏋️ Entrenamiento de hoy",
+    "training.week.empty.cta.btn": "🏋️ Entreno",
     "training.explain.btn": "📖 Explicar",
     "training.refresh.btn": "🔄 Nuevo plan",
     "training.explain.loading": "🔍 <i>Explicando el ejercicio «{title}»...</i>",
-    "training.explain.back_daily.btn": "🔙 Volver al entrenamiento",
-    "training.explain.back_weekly.btn": "🔙 Volver al plan",
+    "training.explain.back_daily.btn": "🔙 Plan",
+    "training.explain.back_weekly.btn": "🔙 Semana",
     "training.task.not_found": "Tarea no encontrada.",
     "training.plan.not_found": "Plan no encontrado.",
     "training.task.toggle.done": "✅ ¡Hecho!",
@@ -146,7 +146,7 @@ STRINGS: dict[str, str] = {
     "ai.analyzing.free": "🧠 <i>Analizando progreso...</i>",
     "ai.progress.premium.header": "⭐ <b>Análisis detallado para {name}</b>\n\n",
     "ai.progress.free.header": "📈 <b>Análisis de progreso para {name}</b>\n\n",
-    "ai.progress.back.btn": "🔙 Volver a estadísticas",
+    "ai.progress.back.btn": "🔙 Estadística",
     "ai.retry.btn": "🔄 Reintentar",
     "ai.back_menu.btn": "🔙 Menú",
     "coach.entry": (
@@ -191,8 +191,8 @@ STRINGS: dict[str, str] = {
     "stats.completed": "{emoji} Sesiones completadas: <b>{n}</b>\n\n",
     "stats.level": "🏆 Nivel de obediencia: <b>{level}</b>\n\n",
     "stats.motivate": "<i>¡Cada sesión hace a {name} mejor!</i> 🚀",
-    "stats.analysis.premium.btn": "🧠 Análisis IA detallado ⭐",
-    "stats.analysis.free.btn": "🧠 Análisis IA de progreso",
+    "stats.analysis.premium.btn": "🧠 IA Pro ⭐",
+    "stats.analysis.free.btn": "🧠 Análisis IA",
     # ── Profile ────────────────────────────────────────────────────────────────
     "profile.header": "🐾 <b>{name}</b>\n\n",
     "profile.breed": "🐕 Raza: {val}\n",
@@ -209,7 +209,7 @@ STRINGS: dict[str, str] = {
     "profile.weight.unknown": "no especificado",
     "profile.issues.none": "ninguno",
     "profile.schedule.unknown": "no especificado",
-    "profile.edit.btn": "✏️ Editar perfil",
+    "profile.edit.btn": "✏️ Editar",
     # ── Shop ───────────────────────────────────────────────────────────────────
     "shop.title": "🛒 <b>Tienda PepitoPet</b>",
     "shop.body": (
@@ -217,10 +217,10 @@ STRINGS: dict[str, str] = {
         "sin aditivos ni conservadores, solo carne real.\n\n"
         "Elige una categoría:"
     ),
-    "shop.cat.training.btn": "🎯 Premios de entrenamiento",
-    "shop.cat.longplay.btn": "🦴 Masticables de larga duración",
-    "shop.cat.by_size.btn": "🐶 Cachorros & por tamaño",
-    "shop.cat.all.btn": "🛒 Tienda completa",
+    "shop.cat.training.btn": "🎯 Entreno",
+    "shop.cat.longplay.btn": "🦴 Duraderos",
+    "shop.cat.by_size.btn": "🐶 Por tamaño",
+    "shop.cat.all.btn": "🛍 Todo",
     "shop.rec.puppy_named": "🐶 Premios para cachorros — para {name}",
     "shop.rec.small_named": "🐶 Premios para razas pequeñas — para {name}",
     "shop.rec.puppy_small_free": "🐶 Premios para cachorros y perros pequeños",
@@ -237,7 +237,7 @@ STRINGS: dict[str, str] = {
     "invite.count": "👥 Invitados: <b>{n}</b>",
     "invite.next": "🎯 Hasta la siguiente recompensa: <b>{n}</b> más",
     "invite.all_done": "👑 <b>¡Todas las recompensas obtenidas! ¡Eres una leyenda!</b>",
-    "invite.share.btn": "📤 Compartir enlace",
+    "invite.share.btn": "📤 Compartir",
     "invite.share.text": "Entreno a mi mascota con Pepito entrenador IA 🐾",
     "invite.base_tier": "1 amigo    — +{days} días Premium (para ambos)",
     "invite.goal": "🎯 {needed} más para {next_label} ({reward})",
@@ -278,7 +278,7 @@ STRINGS: dict[str, str] = {
         "🎁 Recomendaciones personalizadas de premios\n\n"
         "<b>{price} Stars</b> / mes · o invita a 3 amigos — gratis"
     ),
-    "premium.upsell.btn": "⭐ Obtener Premium por {price} Stars",
+    "premium.upsell.btn": "⭐ {price} Stars",
     "premium.invoice.title": "Pepito Premium — 1 mes",
     "premium.invoice.description": "Entrenador IA ilimitado, reportes detallados y análisis conductual profundo.",
     "premium.invoice.label": "Premium 1 mes",
@@ -490,15 +490,15 @@ STRINGS: dict[str, str] = {
     "reminder.error.format": (
         "⚠️ Formato inválido. Ingresa la hora como <code>HH:MM</code>, ej. <code>09:30</code>."
     ),
-    "reminder.enable.btn": "🔔 Activar recordatorios",
-    "reminder.change.btn": "✏️ Cambiar hora",
+    "reminder.enable.btn": "🔔 Activar",
+    "reminder.change.btn": "✏️ Hora",
     "reminder.disable.btn": "🔕 Desactivar",
-    "reminder.back.btn": "🔙 Volver a recordatorios",
+    "reminder.back.btn": "🔙 Atrás",
     "reminder.back_settings.btn": "🔙 Atrás",
-    "reminder.settings.btn": "⏰ Configuración de recordatorios",
+    "reminder.settings.btn": "🔔 Avisos",
     "reminder.menu.btn": "🔙 Menú",
     "reminder.tz_missing": "⚠️ <b>Zona horaria no configurada</b> — se usa UTC+0. Configúrala para que los recordatorios lleguen a la hora correcta.",
-    "reminder.tz_change.btn": "🌍 Configurar zona horaria",
+    "reminder.tz_change.btn": "🌍 Zona",
     "reminder.push.friend": "amigo",
     "reminder.push.text": "🐾 ¡Hola, {name}!\n\nNo olvides entrenar con tu mascota hoy. Abre /menu para ver el plan.",
     "report.weekly.premium": (
@@ -535,9 +535,9 @@ STRINGS: dict[str, str] = {
         "🎁 Recomendaciones personalizadas con el nombre de tu mascota\n\n"
     ),
     "help.guide.commands": "<b>Comandos:</b> /menu · /start · /reset",
-    "help.support.btn": "💬 Contactar soporte",
+    "help.support.btn": "💬 Soporte",
     "help.btn": "❓ Ayuda",
-    "help.back_settings.btn": "🔙 Volver a configuración",
+    "help.back_settings.btn": "🔙 Ajustes",
     # ── Edit Profile ───────────────────────────────────────────────────────────
     "edit_profile.title": "✏️ <b>Editar perfil</b>\n\n¿Qué deseas cambiar?",
     "edit_profile.field.name.prompt": "Escribe el nuevo nombre de tu mascota en el chat:",

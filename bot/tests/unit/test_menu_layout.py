@@ -7,8 +7,8 @@ from app.i18n.core import _load_locale
 
 LOCALES = ("ru", "en", "de", "es", "fr", "pt")
 MAX_LEN = 14
-# Over-long labels still to shorten (P1.10 text pass). This number may only go DOWN.
-OVERLONG_BASELINE = 111
+# Every button label in every locale must fit 14 characters (placeholders count as 2).
+OVERLONG_BASELINE = 0
 
 
 def _buttons(kb):
@@ -56,7 +56,7 @@ def _overlong() -> int:
     return n
 
 
-def test_overlong_button_labels_never_grow():
+def test_no_button_label_exceeds_14_characters_in_any_locale():
     assert _overlong() <= OVERLONG_BASELINE, _overlong()
 
 

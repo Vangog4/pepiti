@@ -81,12 +81,12 @@ STRINGS: dict[str, str] = {
         "Starte mit dem Tagesplan — Pepito erstellt den Wochenplan, "
         "sobald du etwas Fortschritt hast!"
     ),
-    "training.week.empty.cta.btn": "🏋️ Heutiges Training",
+    "training.week.empty.cta.btn": "🏋️ Training",
     "training.explain.btn": "📖 Erklären",
     "training.refresh.btn": "🔄 Neuer Plan",
     "training.explain.loading": "🔍 <i>Erkläre Übung «{title}»...</i>",
-    "training.explain.back_daily.btn": "🔙 Zurück zum Training",
-    "training.explain.back_weekly.btn": "🔙 Zurück zum Plan",
+    "training.explain.back_daily.btn": "🔙 Plan",
+    "training.explain.back_weekly.btn": "🔙 Woche",
     "training.task.not_found": "Aufgabe nicht gefunden.",
     "training.plan.not_found": "Plan nicht gefunden.",
     "training.task.toggle.done": "✅ Erledigt!",
@@ -146,7 +146,7 @@ STRINGS: dict[str, str] = {
     "ai.analyzing.free": "🧠 <i>Analysiere Fortschritt...</i>",
     "ai.progress.premium.header": "⭐ <b>Detaillierte Analyse für {name}</b>\n\n",
     "ai.progress.free.header": "📈 <b>Fortschrittsanalyse für {name}</b>\n\n",
-    "ai.progress.back.btn": "🔙 Zurück zur Statistik",
+    "ai.progress.back.btn": "🔙 Statistik",
     "ai.retry.btn": "🔄 Nochmal",
     "ai.back_menu.btn": "🔙 Menü",
     "coach.entry": (
@@ -191,8 +191,8 @@ STRINGS: dict[str, str] = {
     "stats.completed": "{emoji} Abgeschlossene Einheiten: <b>{n}</b>\n\n",
     "stats.level": "🏆 Gehorsamkeitsniveau: <b>{level}</b>\n\n",
     "stats.motivate": "<i>Jede Einheit macht {name} besser!</i> 🚀",
-    "stats.analysis.premium.btn": "🧠 Detaillierte KI-Analyse ⭐",
-    "stats.analysis.free.btn": "🧠 KI-Fortschrittsanalyse",
+    "stats.analysis.premium.btn": "🧠 KI Pro ⭐",
+    "stats.analysis.free.btn": "🧠 KI-Analyse",
     # ── Profile ────────────────────────────────────────────────────────────────
     "profile.header": "🐾 <b>{name}</b>\n\n",
     "profile.breed": "🐕 Rasse: {val}\n",
@@ -209,7 +209,7 @@ STRINGS: dict[str, str] = {
     "profile.weight.unknown": "nicht angegeben",
     "profile.issues.none": "keine",
     "profile.schedule.unknown": "nicht angegeben",
-    "profile.edit.btn": "✏️ Profil bearbeiten",
+    "profile.edit.btn": "✏️ Ändern",
     # ── Shop ───────────────────────────────────────────────────────────────────
     "shop.title": "🛒 <b>PepitoPet Shop</b>",
     "shop.body": (
@@ -217,9 +217,9 @@ STRINGS: dict[str, str] = {
         "ohne Zusatzstoffe oder Konservierungsmittel, nur echtes Fleisch.\n\n"
         "Kategorie wählen:"
     ),
-    "shop.cat.training.btn": "🎯 Trainingleckerlis",
-    "shop.cat.longplay.btn": "🦴 Langzeit-Kauartikel",
-    "shop.cat.by_size.btn": "🐶 Welpen & nach Größe",
+    "shop.cat.training.btn": "🎯 Training",
+    "shop.cat.longplay.btn": "🦴 Kauknochen",
+    "shop.cat.by_size.btn": "🐶 Nach Größe",
     "shop.cat.all.btn": "🛒 Ganzer Shop",
     "shop.rec.puppy_named": "🐶 Welpenleckerli — für {name}",
     "shop.rec.small_named": "🐶 Leckerli für kleine Rassen — für {name}",
@@ -278,7 +278,7 @@ STRINGS: dict[str, str] = {
         "🎁 Personalisierte Leckerli-Empfehlungen\n\n"
         "<b>{price} Stars</b> / Monat · oder 3 Freunde einladen — kostenlos"
     ),
-    "premium.upsell.btn": "⭐ Premium für {price} Stars holen",
+    "premium.upsell.btn": "⭐ {price} Stars",
     "premium.invoice.title": "Pepito Premium — 1 Monat",
     "premium.invoice.description": "Unbegrenzter KI-Trainer, detaillierte Berichte und tiefgehende Verhaltensanalyse.",
     "premium.invoice.label": "Premium 1 Monat",
@@ -490,15 +490,15 @@ STRINGS: dict[str, str] = {
     "reminder.error.format": (
         "⚠️ Ungültiges Format. Gib die Zeit als <code>HH:MM</code> ein, z.B. <code>09:30</code>."
     ),
-    "reminder.enable.btn": "🔔 Erinnerungen aktivieren",
+    "reminder.enable.btn": "🔔 Aktivieren",
     "reminder.change.btn": "✏️ Zeit ändern",
     "reminder.disable.btn": "🔕 Deaktivieren",
-    "reminder.back.btn": "🔙 Zurück zu Erinnerungen",
+    "reminder.back.btn": "🔙 Zurück",
     "reminder.back_settings.btn": "🔙 Zurück",
-    "reminder.settings.btn": "⏰ Erinnerungseinstellungen",
+    "reminder.settings.btn": "🔔 Erinnerung",
     "reminder.menu.btn": "🔙 Menü",
     "reminder.tz_missing": "⚠️ <b>Zeitzone nicht gesetzt</b> — UTC+0 wird verwendet. Stelle sie ein, damit Erinnerungen zur richtigen Zeit kommen.",
-    "reminder.tz_change.btn": "🌍 Zeitzone festlegen",
+    "reminder.tz_change.btn": "🌍 Zeitzone",
     "reminder.push.friend": "Freund",
     "reminder.push.text": "🐾 Hallo, {name}!\n\nVergiss nicht, heute mit deinem Haustier zu trainieren. Öffne /menu, um den Plan zu sehen.",
     "report.weekly.premium": (
@@ -535,9 +535,9 @@ STRINGS: dict[str, str] = {
         "🎁 Personalisierte Leckerli-Empfehlungen mit Tiernamen\n\n"
     ),
     "help.guide.commands": "<b>Befehle:</b> /menu · /start · /reset",
-    "help.support.btn": "💬 Support kontaktieren",
+    "help.support.btn": "💬 Support",
     "help.btn": "❓ Hilfe",
-    "help.back_settings.btn": "🔙 Zurück zu Einstellungen",
+    "help.back_settings.btn": "🔙 Einstell.",
     # ── Edit Profile ───────────────────────────────────────────────────────────
     "edit_profile.title": "✏️ <b>Profil bearbeiten</b>\n\nWas möchtest du ändern?",
     "edit_profile.field.name.prompt": "Gib den neuen Namen deines Tieres ein:",
@@ -548,7 +548,7 @@ STRINGS: dict[str, str] = {
     "edit_profile.field.size.prompt": "Wähle die neue Größe des Tieres:",
     "edit_profile.field.timezone.prompt": "🌍 Wähle deine Zeitzone:",
     "edit_profile.saved": "✅ Aktualisiert: <b>{value}</b>",
-    "edit_profile.edit_more.btn": "✏️ Mehr bearbeiten",
+    "edit_profile.edit_more.btn": "✏️ Mehr",
     "edit_profile.error.empty": "⚠️ Das Feld darf nicht leer sein. Bitte erneut versuchen.",
     "edit_profile.error.too_long": "⚠️ Wert zu lang — max. 50 Zeichen (dein Wert: {n}).",
     "edit_profile.btn.name": "🐾 Name",

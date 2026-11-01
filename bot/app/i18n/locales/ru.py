@@ -92,7 +92,7 @@ STRINGS: dict[str, str] = {
         "Начни с ежедневного плана — Pepito составит недельный, "
         "когда накопится немного прогресса!"
     ),
-    "training.week.empty.cta.btn": "🏋️ Тренировка на сегодня",
+    "training.week.empty.cta.btn": "🏋️ Занятие",
     "training.explain.btn": "📖 Объяснить",
     "training.refresh.btn": "🔄 Новый план",
     "training.explain.loading": "🔍 <i>Объясняю упражнение «{title}»...</i>",
@@ -212,8 +212,8 @@ STRINGS: dict[str, str] = {
     "stats.completed": "{emoji} Тренировок выполнено: <b>{n}</b>\n",
     "stats.level": "🏆 Уровень послушания: <b>{level}</b>\n\n──────────\n",
     "stats.motivate": "<i>Каждая тренировка делает {name} лучше!</i> 🚀",
-    "stats.analysis.premium.btn": "🧠 Глубокий анализ AI ⭐",
-    "stats.analysis.free.btn": "🧠 Анализ прогресса AI",
+    "stats.analysis.premium.btn": "🧠 AI Pro ⭐",
+    "stats.analysis.free.btn": "🧠 Анализ AI",
     # ── Profile ────────────────────────────────────────────────────────────────
     "profile.header": "🐾 <b>{name}</b>\n──────────\n",
     "profile.breed": "🐕 Порода: {val}\n",
@@ -230,7 +230,7 @@ STRINGS: dict[str, str] = {
     "profile.weight.unknown": "не указан",
     "profile.issues.none": "нет",
     "profile.schedule.unknown": "не указано",
-    "profile.edit.btn": "✏️ Изменить профиль",
+    "profile.edit.btn": "✏️ Изменить",
     # ── Shop ───────────────────────────────────────────────────────────────────
     "shop.title": "🛒 <b>Магазин PepitoPet</b>",
     "shop.body": (
@@ -238,9 +238,9 @@ STRINGS: dict[str, str] = {
         "без химии и консервантов, из настоящего мяса.\n\n"
         "Выбери категорию:"
     ),
-    "shop.cat.training.btn": "🎯 Для дрессировки",
-    "shop.cat.longplay.btn": "🦴 Долгоиграющие",
-    "shop.cat.by_size.btn": "🐶 Для щенков и по размеру",
+    "shop.cat.training.btn": "🎯 Дрессировка",
+    "shop.cat.longplay.btn": "🦴 Надолго",
+    "shop.cat.by_size.btn": "🐶 По размеру",
     "shop.cat.all.btn": "🛒 Весь магазин",
     "shop.rec.puppy_named": "🐶 Лакомства для щенков — для {name}",
     "shop.rec.small_named": "🐶 Лакомства для маленьких пород — для {name}",
@@ -258,7 +258,7 @@ STRINGS: dict[str, str] = {
     "invite.count": "👥 Приглашено: <b>{n}</b>",
     "invite.next": "🎯 До следующей награды: ещё <b>{n}</b>",
     "invite.all_done": "👑 <b>Все награды получены! Ты легенда!</b>",
-    "invite.share.btn": "📤 Поделиться ссылкой",
+    "invite.share.btn": "📤 Поделиться",
     "invite.share.text": "Тренирую питомца с AI-кинологом Pepito 🐾",
     "invite.base_tier": "1 друг    — +{days} дней Premium (обоим)",
     "invite.goal": "🎯 Ещё {needed} до {next_label} ({reward})",
@@ -300,7 +300,7 @@ STRINGS: dict[str, str] = {
         "🎁 Персональные рекомендации лакомств\n\n"
         "<b>{price} Stars</b> / месяц · или пригласи 3 друзей — бесплатно"
     ),
-    "premium.upsell.btn": "⭐ Получить Premium за {price} Stars",
+    "premium.upsell.btn": "⭐ {price} Stars",
     "premium.invoice.title": "Pepito Premium — 1 месяц",
     "premium.invoice.description": "AI-кинолог без ограничений, детальные отчёты и расширенный анализ поведения питомца.",
     "premium.invoice.label": "Premium 1 месяц",
@@ -515,15 +515,15 @@ STRINGS: dict[str, str] = {
     "reminder.error.format": (
         "⚠️ Неверный формат. Введи время как <code>ЧЧ:ММ</code>, например <code>09:30</code>."
     ),
-    "reminder.enable.btn": "🔔 Включить напоминания",
-    "reminder.change.btn": "✏️ Изменить время",
+    "reminder.enable.btn": "🔔 Включить",
+    "reminder.change.btn": "✏️ Время",
     "reminder.disable.btn": "🔕 Отключить",
-    "reminder.back.btn": "🔙 Назад к напоминаниям",
+    "reminder.back.btn": "🔙 Назад",
     "reminder.back_settings.btn": "🔙 Назад",
     "reminder.settings.btn": "⏰ К настройкам",
     "reminder.menu.btn": "🔙 В меню",
     "reminder.tz_missing": "⚠️ <b>Часовой пояс не задан</b> — используется UTC+0. Задай его, чтобы напоминания приходили в нужное время.",
-    "reminder.tz_change.btn": "🌍 Задать часовой пояс",
+    "reminder.tz_change.btn": "🌍 Пояс",
     "reminder.push.friend": "друг",
     "reminder.push.text": "🐾 Привет, {name}!\n\nНе забудь про тренировку с питомцем сегодня. Открой /menu, чтобы посмотреть план.",
     "report.weekly.premium": (
@@ -560,7 +560,7 @@ STRINGS: dict[str, str] = {
         "🎁 Персональные рекомендации лакомств с именем питомца\n\n"
     ),
     "help.guide.commands": "<b>Команды:</b> /menu · /start · /reset",
-    "help.support.btn": "💬 Написать в поддержку",
+    "help.support.btn": "💬 Поддержка",
     "help.btn": "❓ Помощь",
     "help.back_settings.btn": "🔙 К настройкам",
     # ── Edit Profile ───────────────────────────────────────────────────────────
@@ -573,7 +573,7 @@ STRINGS: dict[str, str] = {
     "edit_profile.field.size.prompt": "Выбери новый размер питомца:",
     "edit_profile.field.timezone.prompt": "🌍 Выбери свой часовой пояс:",
     "edit_profile.saved": "✅ Обновлено: <b>{value}</b>",
-    "edit_profile.edit_more.btn": "✏️ Изменить ещё",
+    "edit_profile.edit_more.btn": "✏️ Ещё",
     "edit_profile.error.empty": "⚠️ Поле не может быть пустым. Попробуй ещё раз.",
     "edit_profile.error.too_long": "⚠️ Слишком длинное значение — максимум 50 символов (у тебя {n}).",
     "edit_profile.btn.name": "🐾 Имя",
