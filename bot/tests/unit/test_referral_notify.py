@@ -8,13 +8,12 @@ import pytest
 sys.path.insert(0, ".")
 
 from app.services.referral_service import (
-    ReferralAwardResult,
     REFERRAL_MILESTONES,
-    notify_referrer,
+    ReferralAwardResult,
     milestone_label,
     milestone_reward,
+    notify_referrer,
 )
-
 
 # ── dataclass structure ────────────────────────────────────────────────────────
 

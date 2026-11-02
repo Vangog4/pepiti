@@ -1,4 +1,15 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    func,
+    text,
+)
 from sqlalchemy.orm import relationship
 
 from app.infrastructure.db.models.base import Base
@@ -34,6 +45,11 @@ class UserModel(Base):
         ),
         nullable=True,
     )
+    ui_message_id = Column(BigInteger, nullable=True)  # the live main-menu window
+    active_pet_id = Column(Integer, nullable=True)  # which dog the owner is working with
+    notify_seasonal = Column(Boolean, nullable=False, default=True, server_default=text("true"))
+    media_trial_used_at = Column(DateTime, nullable=True)  # one free photo/voice analysis
+    weekly_report_sent_on = Column(Date, nullable=True)  # user's local date of last report
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

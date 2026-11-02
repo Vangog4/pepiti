@@ -6,9 +6,11 @@ from dependency_injector.wiring import Provide, inject
 
 from app.bot.keyboards.main_menu import get_main_menu
 from app.bot.states.onboarding import OnboardingStates
+from app.bot.window import replace_window
 from app.core.config import settings
 from app.core.container import AppContainer
 from app.i18n import normalize_locale, t
+from app.services.entitlements import has_premium
 from app.services.user_service import UserService
 
 router = Router(name="start_router")
@@ -66,7 +68,7 @@ async def cmd_start(
                     "🐾 <b>Вход в мобильное приложение Pepito подтвержден!</b>\n\n"
                     "Вы можете вернуться в приложение — данные синхронизированы.",
                     reply_markup=get_main_menu(
-                        user.is_premium, webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
+                        has_premium(user), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
                     ),
                     parse_mode="HTML",
                 )
@@ -89,21 +91,23 @@ async def cmd_start(
             await message.answer(
                 t("coach.entry", lang),
                 reply_markup=get_main_menu(
-                    user.is_premium, webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
+                    has_premium(user), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
                 ),
                 parse_mode="HTML",
             )
             return
-        await message.answer(
+        await replace_window(
+            message,
+            user,
+            user_service.repo.session,
             t("onboarding.start.returning", lang, name=user.first_name),
-            reply_markup=get_main_menu(
-                user.is_premium, webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
-            ),
+            get_main_menu(has_premium(user), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang),
+            parse_mode=None,
         )
         return
 
     await message.answer(
-        t("onboarding.ai.welcome", lang, name=message.from_user.first_name),
+        t("onboarding.q.name", lang),
         parse_mode="HTML",
         reply_markup=ReplyKeyboardRemove(),
     )

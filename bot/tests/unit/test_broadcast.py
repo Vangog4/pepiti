@@ -1,12 +1,12 @@
 """Unit tests for app/services/broadcast_service.run_broadcast — 4 cases."""
 
-import asyncio
 import sys
 
 sys.path.insert(0, ".")
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.services.broadcast_service import run_broadcast
 
@@ -14,18 +14,18 @@ from app.services.broadcast_service import run_broadcast
 # ---------------------------------------------------------------------------
 # Fake exception classes — avoid constructing real aiogram exception internals
 # ---------------------------------------------------------------------------
-class _Forbidden(Exception):
+class _ForbiddenError(Exception):
     pass
 
 
-class _RetryAfter(Exception):
+class _RetryAfterError(Exception):
     def __init__(self, retry_after: int = 1):
         self.retry_after = retry_after
 
 
 _PATCHES = dict(
-    TelegramForbiddenError=_Forbidden,
-    TelegramRetryAfter=_RetryAfter,
+    TelegramForbiddenError=_ForbiddenError,
+    TelegramRetryAfter=_RetryAfterError,
 )
 
 
@@ -47,8 +47,8 @@ async def test_all_sent():
 
     with (
         patch("asyncio.sleep", new_callable=AsyncMock),
-        patch("app.services.broadcast_service.TelegramForbiddenError", _Forbidden),
-        patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfter),
+        patch("app.services.broadcast_service.TelegramForbiddenError", _ForbiddenError),
+        patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfterError),
     ):
         await run_broadcast(bot, [1, 2, 3], "Hello", admin_telegram_id=999)
 
@@ -63,14 +63,14 @@ async def test_forbidden_skipped():
 
     async def _side(chat_id, **kw):
         if chat_id == 2:
-            raise _Forbidden()
+            raise _ForbiddenError()
 
     bot.send_message = AsyncMock(side_effect=_side)
 
     with (
         patch("asyncio.sleep", new_callable=AsyncMock),
-        patch("app.services.broadcast_service.TelegramForbiddenError", _Forbidden),
-        patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfter),
+        patch("app.services.broadcast_service.TelegramForbiddenError", _ForbiddenError),
+        patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfterError),
     ):
         await run_broadcast(bot, [1, 2, 3], "Hello", admin_telegram_id=999)
 
@@ -90,14 +90,14 @@ async def test_retry_after_then_success():
     async def _side(chat_id, **kw):
         if chat_id == 2 and not _retried["done"]:
             _retried["done"] = True
-            raise _RetryAfter(retry_after=5)
+            raise _RetryAfterError(retry_after=5)
 
     bot.send_message = AsyncMock(side_effect=_side)
 
     with (
         patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        patch("app.services.broadcast_service.TelegramForbiddenError", _Forbidden),
-        patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfter),
+        patch("app.services.broadcast_service.TelegramForbiddenError", _ForbiddenError),
+        patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfterError),
     ):
         await run_broadcast(bot, [1, 2], "Hello", admin_telegram_id=999)
 
@@ -113,8 +113,8 @@ async def test_empty_list():
 
     with (
         patch("asyncio.sleep", new_callable=AsyncMock),
-        patch("app.services.broadcast_service.TelegramForbiddenError", _Forbidden),
-        patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfter),
+        patch("app.services.broadcast_service.TelegramForbiddenError", _ForbiddenError),
+        patch("app.services.broadcast_service.TelegramRetryAfter", _RetryAfterError),
     ):
         await run_broadcast(bot, [], "Hello", admin_telegram_id=999)
 

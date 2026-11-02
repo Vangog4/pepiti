@@ -6,8 +6,6 @@ Run: pytest tests/unit/test_i18n_coverage.py -v
 import re
 import sys
 
-import pytest
-
 sys.path.insert(0, ".")
 
 from app.i18n.core import _load_locale
@@ -132,7 +130,7 @@ def test_no_positional_placeholders_in_ru():
     for key, val in ru.items():
         if re.search(r"\{(\d+)?\}", val):
             bad.append(f"{key!r}: {val[:60]!r}")
-    assert not bad, f"Positional placeholders found in ru.py:\n" + "\n".join(bad)
+    assert not bad, "Positional placeholders found in ru.py:\n" + "\n".join(bad)
 
 
 def test_t_resolves_known_keys():

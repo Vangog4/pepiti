@@ -1,7 +1,7 @@
 """Unit tests for AiService.extract_pet_profile (Stage 9: conversational onboarding)."""
 
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 

@@ -2,12 +2,16 @@ from dependency_injector import containers, providers
 
 from app.core.config import settings
 from app.infrastructure.db.engine import create_db_engine
+from app.infrastructure.db.repositories.activity_repo import ActivityRepository
 from app.infrastructure.db.repositories.ai_conversation_repo import AiConversationRepository
 from app.infrastructure.db.repositories.coach_thread_repo import CoachThreadRepository
+from app.infrastructure.db.repositories.health_repo import HealthRepository
+from app.infrastructure.db.repositories.pet_fact_repo import PetFactRepository
 from app.infrastructure.db.repositories.pet_repo import PetRepository
 from app.infrastructure.db.repositories.subscription_repo import SubscriptionRepository
 from app.infrastructure.db.repositories.training_repo import TrainingPlanRepository
 from app.infrastructure.db.repositories.user_repo import UserRepository
+from app.infrastructure.db.repositories.weight_repo import WeightRepository
 from app.infrastructure.db.session import create_session_factory, get_current_session
 from app.infrastructure.redis.admin_log import AdminLog
 from app.infrastructure.redis.ai_rate_limit import AiRateLimiter
@@ -42,6 +46,10 @@ class AppContainer(containers.DeclarativeContainer):
     # Репозитории
     user_repo = providers.Factory(UserRepository, session=db_session)
     pet_repo = providers.Factory(PetRepository, session=db_session)
+    weight_repo = providers.Factory(WeightRepository, session=db_session)
+    activity_repo = providers.Factory(ActivityRepository, session=db_session)
+    health_repo = providers.Factory(HealthRepository, session=db_session)
+    pet_fact_repo = providers.Factory(PetFactRepository, session=db_session)
     training_plan_repo = providers.Factory(TrainingPlanRepository, session=db_session)
     ai_conversation_repo = providers.Factory(AiConversationRepository, session=db_session)
 

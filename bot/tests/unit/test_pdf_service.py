@@ -1,6 +1,7 @@
 """Unit tests for pdf_service.generate_training_pdf."""
 
 import pytest
+
 from app.services.pdf_service import generate_training_pdf
 
 

@@ -9,6 +9,7 @@ from app.api.v1.dependencies import get_current_user
 from app.api.v1.schemas.subscription import PlanPricing, SubscriptionStatusResponse
 from app.infrastructure.db.models.user import UserModel
 from app.logic.rules import rule
+from app.services.entitlements import has_premium
 
 router = APIRouter(prefix="/subscription", tags=["Subscription"])
 
@@ -55,7 +56,7 @@ async def get_subscription_status(
         if exp_aware > now:
             is_active = True
             days_left = max(0, (exp_aware - now).days)
-    elif bool(current_user.is_premium):
+    elif bool(has_premium(current_user)):
         is_active = True
         days_left = 9999
 

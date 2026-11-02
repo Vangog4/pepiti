@@ -1,0 +1,11 @@
+[Unit]
+Description=Pepito daily PostgreSQL backup
+Requires=pepito-db.service
+After=pepito-db.service
+
+[Service]
+Type=oneshot
+ExecStartPre=/usr/bin/mkdir -p /var/backups/pepito
+ExecStart=/bin/sh -c 'podman exec pepito-bot_db_1 pg_dump -U pepito pepito_db | gzip > /var/backups/pepito/pepito-$(date +%%F).sql.gz.tmp && mv /var/backups/pepito/pepito-$(date +%%F).sql.gz.tmp /var/backups/pepito/pepito-$(date +%%F).sql.gz'
+# keep 7 days; never delete anything but our own dumps
+ExecStartPost=/usr/bin/find /var/backups/pepito -name 'pepito-*.sql.gz' -mtime +7 -delete

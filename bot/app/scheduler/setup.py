@@ -1,19 +1,53 @@
 import logging
+from datetime import UTC, datetime
 
+import redis.asyncio as aioredis
 from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.core.config import settings
+from app.infrastructure.redis.once import OnceGuard
 from app.scheduler.jobs.expire_subscriptions import expire_subscriptions
-from app.scheduler.jobs.reminders import send_daily_reminders
+from app.scheduler.jobs.heartbeat import beat
+from app.scheduler.jobs.reminders import send_daily_reminders, send_health_reminders
 from app.scheduler.jobs.reports import send_weekly_reports
+from app.services.nudges import (
+    send_evening_nudges,
+    send_renewal_reminders,
+    send_seasonal_nudges,
+    send_weigh_in_nudges,
+    send_winback,
+)
+from app.services.payment_reconcile import reconcile_stars
 
 logger = logging.getLogger(__name__)
 
 
 def create_scheduler(session_factory: async_sessionmaker, bot: Bot) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone="UTC")
+
+    # First beat immediately so the healthcheck is green from second zero, not after 30 s.
+    scheduler.add_job(
+        beat,
+        "interval",
+        seconds=30,
+        id="heartbeat",
+        replace_existing=True,
+        next_run_time=datetime.now(UTC),
+    )
+
+    # Safety net for money: grant Stars payments whose update was lost (outage, restart).
+    scheduler.add_job(
+        reconcile_stars,
+        trigger=CronTrigger(minute="*/15", timezone="UTC"),
+        kwargs={"bot": bot, "session_factory": session_factory},
+        id="reconcile_stars",
+        replace_existing=True,
+        next_run_time=datetime.now(UTC),  # also once at startup
+        max_instances=1,
+    )
 
     scheduler.add_job(
         send_daily_reminders,
@@ -25,9 +59,34 @@ def create_scheduler(session_factory: async_sessionmaker, bot: Bot) -> AsyncIOSc
         replace_existing=True,
     )
 
+    guard = OnceGuard(aioredis.from_url(settings.REDIS_URL))
+    for job, job_id in (
+        (send_renewal_reminders, "renewal_reminders"),
+        (send_evening_nudges, "evening_nudge"),
+        (send_seasonal_nudges, "seasonal_nudges"),
+        (send_winback, "winback"),
+        (send_weigh_in_nudges, "weigh_in_nudge"),
+    ):
+        scheduler.add_job(
+            job,
+            trigger=CronTrigger(minute="*", timezone="UTC"),
+            kwargs={"session_factory": session_factory, "bot": bot, "guard": guard},
+            id=job_id,
+            replace_existing=True,
+            max_instances=1,
+        )
+
+    scheduler.add_job(
+        send_health_reminders,
+        trigger=CronTrigger(minute="*", timezone="UTC"),
+        kwargs={"session_factory": session_factory, "bot": bot},
+        id="health_reminders",
+        replace_existing=True,
+    )
+
     scheduler.add_job(
         send_weekly_reports,
-        trigger=CronTrigger(day_of_week="sun", hour=18, minute=0, timezone="UTC"),
+        trigger=CronTrigger(minute="*/15", timezone="UTC"),  # local Sunday evening per user
         kwargs={"session_factory": session_factory, "bot": bot},
         id="weekly_reports",
         replace_existing=True,
@@ -35,7 +94,7 @@ def create_scheduler(session_factory: async_sessionmaker, bot: Bot) -> AsyncIOSc
 
     scheduler.add_job(
         expire_subscriptions,
-        trigger=CronTrigger(hour=0, minute=5, timezone="UTC"),
+        trigger=CronTrigger(minute="*/10", timezone="UTC"),
         kwargs={"session_factory": session_factory},
         id="expire_subscriptions",
         replace_existing=True,
@@ -43,6 +102,6 @@ def create_scheduler(session_factory: async_sessionmaker, bot: Bot) -> AsyncIOSc
 
     logger.info(
         "Scheduler configured: daily_reminders (every minute, per-user time), "
-        "weekly_reports (Sun 18:00 UTC), expire_subscriptions (00:05 UTC)"
+        "weekly_reports (every 15 min, per-user Sunday evening), expire_subscriptions (every 10 min)"
     )
     return scheduler

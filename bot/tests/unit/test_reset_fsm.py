@@ -7,14 +7,13 @@ Root cause of original bug:
 """
 
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 sys.path.insert(0, ".")
 
 from app.bot.states.onboarding import OnboardingStates
-
 
 # ── 1. State attribute guard ─────────────────────────────────────────────────
 

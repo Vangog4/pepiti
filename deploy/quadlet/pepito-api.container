@@ -1,0 +1,25 @@
+[Unit]
+Description=Pepito API (WebApp + mobile)
+Requires=pepito-db.service pepito-redis.service
+After=pepito-db.service pepito-redis.service pepito-bot.service
+
+[Container]
+Image=localhost/pepito-bot_api:latest
+ContainerName=pepito-api
+Network=pepito.network
+Network=npm_network
+EnvironmentFile=/root/pepito/bot/.env
+Environment=PEPITO_ROLE=api
+HealthCmd=python -c "import urllib.request as u; u.urlopen('http://127.0.0.1:8080/api/health', timeout=5)"
+HealthInterval=30s
+HealthRetries=3
+HealthStartPeriod=90s
+HealthOnFailure=kill
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

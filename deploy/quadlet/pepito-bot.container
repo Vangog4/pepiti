@@ -1,0 +1,25 @@
+[Unit]
+Description=Pepito Telegram bot (polling + scheduler)
+Requires=pepito-db.service pepito-redis.service
+After=pepito-db.service pepito-redis.service
+
+[Container]
+Image=localhost/pepito-bot_bot:latest
+ContainerName=pepito-bot
+Network=pepito.network
+EnvironmentFile=/root/pepito/bot/.env
+Environment=PEPITO_ROLE=bot
+# Liveness = the scheduler heartbeat is fresh (see app/scheduler/jobs/heartbeat.py).
+HealthCmd=python -m app.scheduler.jobs.heartbeat
+HealthInterval=30s
+HealthRetries=3
+HealthStartPeriod=90s
+HealthOnFailure=kill
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

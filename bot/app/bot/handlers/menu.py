@@ -1,5 +1,5 @@
-import asyncio
 import io
+import logging
 import re
 import urllib.parse
 from datetime import datetime
@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.bot.handlers.help import build_help_text
+from app.bot.handlers.tracker import record_task_day, streak_for
 from app.bot.keyboards.edit_profile import translate_option
 from app.bot.keyboards.main_menu import (
     LANGUAGE_OPTIONS,
@@ -20,22 +21,36 @@ from app.bot.keyboards.main_menu import (
     get_help_keyboard,
     get_language_keyboard,
     get_main_menu,
+    get_more_menu,
     get_settings_keyboard,
 )
 from app.bot.keyboards.training import get_task_keyboard, get_week_day_keyboard
+from app.bot.window import replace_window
 from app.core.config import settings
 from app.core.container import AppContainer
+from app.core.context import current_tg_id
 from app.core.shop import SHOP_URL_BY_SIZE, SHOP_URL_LONGPLAY, SHOP_URL_MAIN, SHOP_URL_TRAINING
 from app.core.shop_recommendations import AFTER_COMPLETION, AFTER_EXERCISE, get_shop_button
+from app.core.tasks import spawn
+from app.core.tz_utils import local_now
 from app.i18n import normalize_locale, pluralize, t
 from app.infrastructure.db.models.coach_thread import CoachThreadModel
 from app.infrastructure.db.models.training import TrainingPlanModel
+from app.infrastructure.db.repositories.activity_repo import ActivityRepository
 from app.infrastructure.db.repositories.ai_conversation_repo import AiConversationRepository
 from app.infrastructure.db.repositories.coach_thread_repo import CoachThreadRepository
-from app.infrastructure.redis.ai_rate_limit import AiRateLimiter
+from app.infrastructure.db.repositories.pet_fact_repo import PetFactRepository
+from app.infrastructure.redis.ai_rate_limit import FREE_DAILY_LIMIT, AiRateLimiter
+from app.infrastructure.redis.funnel import track_soon
 from app.infrastructure.redis.metrics import BotMetrics
 from app.services.ai_service import AiService
 from app.services.coach_service import CoachService
+from app.services.entitlements import has_premium
+from app.services.pet_memory import (
+    MAX_FACTS_STORED,
+    merge_new_facts,
+    pet_memory_block,
+)
 from app.services.pet_service import PetService
 from app.services.referral_service import (
     REFERRAL_BONUS_DAYS,
@@ -51,16 +66,22 @@ from app.services.training_service import (
 )
 from app.services.user_service import UserService
 
+logger = logging.getLogger(__name__)
 router = Router(name="menu_router")
 
 
 def _rate_limit_kb(lang: str = "ru") -> types.InlineKeyboardMarkup:
+    track_soon("paywall", current_tg_id.get())  # the one place every paywall is built
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
+                # 1 tap: straight to the monthly Stars invoice
                 types.InlineKeyboardButton(
-                    text=t("ai.rate_limit.btn", lang), callback_data="menu_premium"
-                )
+                    text=t("ai.rate_limit.btn", lang), callback_data="buy:premium_1m"
+                ),
+                types.InlineKeyboardButton(
+                    text=t("premium.plans.btn", lang), callback_data="menu_premium"
+                ),
             ],
             [
                 types.InlineKeyboardButton(
@@ -69,6 +90,15 @@ def _rate_limit_kb(lang: str = "ru") -> types.InlineKeyboardMarkup:
             ],
         ]
     )
+
+
+async def _remaining_footer(rate_limiter, usr, tg_id: int, lang: str) -> str:
+    """Soft paywall hint under free answers: "2 of 3 left today". Empty for Premium."""
+    if has_premium(usr):
+        return ""
+    left = await rate_limiter.remaining(tg_id, usr.timezone)
+    limit = rate_limiter._limit
+    return "\n\n<i>" + t("ai.remaining", lang, n=left, limit=limit) + "</i>"
 
 
 class ReminderState(StatesGroup):
@@ -129,20 +159,21 @@ async def show_menu(
     state: FSMContext,
     u_svc: UserService = Provide[AppContainer.user_service],
     p_svc: PetService = Provide[AppContainer.pet_service],
+    act_repo: ActivityRepository = Provide[AppContainer.activity_repo],
 ) -> None:
     await state.clear()
     tmp = await msg.answer("⌛️", reply_markup=types.ReplyKeyboardRemove())
     await tmp.delete()
     usr = await u_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
     pet = await p_svc.get_pet(usr.id)
-    streak = pet.training_days or 0 if pet else 0
+    streak = await streak_for(act_repo, pet, usr) if pet else 0
     lang = normalize_locale(usr.language_code)
-    await msg.answer(
+    await replace_window(
+        msg,
+        usr,
+        u_svc.repo.session,
         _menu_text(streak, lang),
-        reply_markup=get_main_menu(
-            usr.is_premium, webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
-        ),
-        parse_mode="HTML",
+        get_main_menu(has_premium(usr), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang),
     )
 
 
@@ -153,23 +184,67 @@ async def back_to_main(
     state: FSMContext,
     u_svc: UserService = Provide[AppContainer.user_service],
     p_svc: PetService = Provide[AppContainer.pet_service],
+    act_repo: ActivityRepository = Provide[AppContainer.activity_repo],
 ) -> None:
     await state.clear()
     usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
     pet = await p_svc.get_pet(usr.id)
-    streak = pet.training_days or 0 if pet else 0
+    streak = await streak_for(act_repo, pet, usr) if pet else 0
     lang = normalize_locale(usr.language_code)
     await cb.message.edit_text(
         _menu_text(streak, lang),
         reply_markup=get_main_menu(
-            usr.is_premium, webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
+            has_premium(usr), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
         ),
         parse_mode="HTML",
     )
+    if usr.ui_message_id != cb.message.message_id:  # this message is the window now
+        usr.ui_message_id = cb.message.message_id
+        await u_svc.repo.session.commit()
     await cb.answer()
 
 
 # ─── settings submenu ────────────────────────────────────────────────────────
+
+
+@router.callback_query(F.data == "menu_more")
+@inject
+async def show_more(
+    cb: types.CallbackQuery,
+    state: FSMContext,
+    u_svc: UserService = Provide[AppContainer.user_service],
+) -> None:
+    await state.clear()
+    await cb.answer()
+    usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
+    lang = normalize_locale(usr.language_code)
+    await cb.message.edit_text(
+        t("menu.more.title", lang),
+        reply_markup=get_more_menu(
+            has_premium(usr), webapp_url=settings.WEBAPP_PUBLIC_URL, lang=lang
+        ),
+    )
+
+
+@router.callback_query(F.data == "toggle_seasonal")
+@inject
+async def toggle_seasonal(
+    cb: types.CallbackQuery,
+    u_svc: UserService = Provide[AppContainer.user_service],
+) -> None:
+    usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
+    usr.notify_seasonal = not bool(usr.notify_seasonal)
+    await u_svc.repo.session.commit()
+    lang = normalize_locale(usr.language_code)
+    await cb.answer(
+        t(
+            "settings.seasonal.toast.on" if usr.notify_seasonal else "settings.seasonal.toast.off",
+            lang,
+        )
+    )
+    await cb.message.edit_reply_markup(
+        reply_markup=get_settings_keyboard(lang, seasonal=bool(usr.notify_seasonal))
+    )
 
 
 @router.callback_query(F.data == "menu_settings")
@@ -193,7 +268,7 @@ async def show_settings(
         reminder_line = t("settings.main.reminder_default", lang, tz=tz)
     await cb.message.edit_text(
         f"{t('settings.main.title', lang)}\n\n{reminder_line}",
-        reply_markup=get_settings_keyboard(lang),
+        reply_markup=get_settings_keyboard(lang, seasonal=bool(usr.notify_seasonal)),
         parse_mode="HTML",
     )
 
@@ -249,7 +324,9 @@ async def show_training_plan(
         return
     text = TrainingService.format_plan(plan, lang)
     plan_done = plan.tasks and all(t.is_completed for t in plan.tasks)
-    shop = get_shop_button(pet, usr.is_premium, AFTER_COMPLETION, lang=lang) if plan_done else None
+    shop = (
+        get_shop_button(pet, has_premium(usr), AFTER_COMPLETION, lang=lang) if plan_done else None
+    )
     await cb.message.edit_text(
         text,
         reply_markup=get_task_keyboard(plan.tasks, shop_btn=shop, lang=lang),
@@ -302,9 +379,11 @@ async def refresh_plan(
         await cb.message.edit_text(t("error.no_pet", lang), reply_markup=get_back_keyboard(lang))
         return
 
-    if not usr.is_premium and not await rate_limiter.is_allowed(cb.from_user.id):
+    if not has_premium(usr) and not await rate_limiter.reserve(cb.from_user.id, usr.timezone):
         await cb.message.edit_text(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
 
@@ -314,14 +393,14 @@ async def refresh_plan(
     try:
         plan = await t_svc.refresh_plan(usr.id, pet, lang=lang)
     except Exception:
+        if not has_premium(usr):
+            await rate_limiter.release(cb.from_user.id, usr.timezone)
         await cb.message.edit_text(
             t("ai.fallback", lang),
             reply_markup=_ai_error_kb("menu_training", lang),
             parse_mode="HTML",
         )
         return
-    if not usr.is_premium:
-        await rate_limiter.increment(cb.from_user.id)
     text = TrainingService.format_plan(plan, lang)
     await cb.message.edit_text(
         text,
@@ -337,6 +416,7 @@ async def toggle_task(
     p_svc: PetService = Provide[AppContainer.pet_service],
     u_svc: UserService = Provide[AppContainer.user_service],
     t_svc: TrainingService = Provide[AppContainer.training_service],
+    act_repo: ActivityRepository = Provide[AppContainer.activity_repo],
 ) -> None:
     parts = cb.data.split(":")
     try:
@@ -364,6 +444,8 @@ async def toggle_task(
         return
 
     task, plan_done = await t_svc.toggle_task(task_id, pet)
+    if plan_done and task.is_completed:
+        await record_task_day(act_repo, pet, usr)
     if not answered:
         toast_key = (
             "training.task.toggle.done" if task.is_completed else "training.task.toggle.undone"
@@ -382,7 +464,7 @@ async def toggle_task(
     text = TrainingService.format_plan(plan, lang)
     share_btn = None
     if plan_done:
-        streak_n = pet.training_days or 1
+        streak_n = (await streak_for(act_repo, pet, usr)) or 1
         emoji = _streak_emoji(streak_n)
         days_word = pluralize(
             streak_n,
@@ -397,7 +479,9 @@ async def toggle_task(
         share_url = "https://t.me/share/url?text=" + urllib.parse.quote(share_text)
         share_btn = types.InlineKeyboardButton(text=t("training.share.btn", lang), url=share_url)
 
-    shop = get_shop_button(pet, usr.is_premium, AFTER_COMPLETION, lang=lang) if plan_done else None
+    shop = (
+        get_shop_button(pet, has_premium(usr), AFTER_COMPLETION, lang=lang) if plan_done else None
+    )
     extra = [btn for btn in [share_btn, shop] if btn]
     await cb.message.edit_text(
         text,
@@ -409,22 +493,9 @@ async def toggle_task(
 # ─── profile ─────────────────────────────────────────────────────────────────
 
 
-@router.callback_query(F.data == "menu_profile")
-@inject
-async def show_profile(
-    cb: types.CallbackQuery,
-    state: FSMContext,
-    u_svc: UserService = Provide[AppContainer.user_service],
-    p_svc: PetService = Provide[AppContainer.pet_service],
-) -> None:
-    await state.clear()
-    await cb.answer()
-    usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
-    lang = normalize_locale(usr.language_code)
-    pet = await p_svc.get_pet(usr.id)
-    if not pet:
-        await cb.message.edit_text(t("error.no_pet", lang), reply_markup=get_back_keyboard(lang))
-        return
+def build_profile_view(pet, pets: list, usr, lang: str):
+    """Profile text + keyboard (pure). ``pets`` = all of the owner's dogs, for the switcher."""
+    from app.services.pets import allowed_pets
 
     weight = (
         f"{pet.weight_kg} {t('profile.weight.unit', lang)}"
@@ -445,21 +516,71 @@ async def show_profile(
         + t("profile.issues", lang, val=issues)
         + t("profile.schedule", lang, val=schedule)
         + t("profile.training_count", lang, n=pet.training_days or 0)
+        + (t("profile.allergies", lang, val=", ".join(pet.allergies)) if pet.allergies else "")
+        + (
+            t("profile.chronic", lang, val=", ".join(pet.chronic_conditions))
+            if pet.chronic_conditions
+            else ""
+        )
     )
-    kb = types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                types.InlineKeyboardButton(
-                    text=t("profile.edit.btn", lang), callback_data="menu_edit_profile"
+    rows = []
+    if len(pets) > 1:
+        usable = {p.id for p in allowed_pets(pets, has_premium(usr))}
+        switcher = []
+        for p in sorted(pets, key=lambda x: x.id):
+            if p.id not in usable:
+                switcher.append(
+                    types.InlineKeyboardButton(text=f"🔒 {p.name}"[:14], callback_data="pet_locked")
                 )
-            ],
-            [
-                types.InlineKeyboardButton(
-                    text=t("common.back_menu.btn", lang), callback_data="menu_main"
+            else:
+                mark = "✓ " if p.id == pet.id else ""
+                switcher.append(
+                    types.InlineKeyboardButton(
+                        text=f"{mark}{p.name}"[:14], callback_data=f"pet_sw:{p.id}"
+                    )
                 )
-            ],
-        ]
-    )
+        rows += [switcher[i : i + 3] for i in range(0, len(switcher), 3)]
+    rows += [
+        [
+            types.InlineKeyboardButton(
+                text=t("profile.edit.btn", lang), callback_data="menu_edit_profile"
+            ),
+            types.InlineKeyboardButton(text=t("memory.btn", lang), callback_data="menu_memory"),
+        ],
+        [
+            types.InlineKeyboardButton(
+                text=t("profile.card.btn", lang), callback_data="card:passport"
+            ),
+            types.InlineKeyboardButton(text=t("profile.pdf.btn", lang), callback_data="pf_pdf"),
+        ],
+        [types.InlineKeyboardButton(text=t("pets.add.btn", lang), callback_data="pet_add")],
+        [
+            types.InlineKeyboardButton(
+                text=t("common.back_menu.btn", lang), callback_data="menu_main"
+            )
+        ],
+    ]
+    return text, types.InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+@router.callback_query(F.data == "menu_profile")
+@inject
+async def show_profile(
+    cb: types.CallbackQuery,
+    state: FSMContext,
+    u_svc: UserService = Provide[AppContainer.user_service],
+    p_svc: PetService = Provide[AppContainer.pet_service],
+) -> None:
+    await state.clear()
+    await cb.answer()
+    usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
+    lang = normalize_locale(usr.language_code)
+    pet = await p_svc.get_pet(usr.id)
+    if not pet:
+        await cb.message.edit_text(t("error.no_pet", lang), reply_markup=get_back_keyboard(lang))
+        return
+
+    text, kb = build_profile_view(pet, await p_svc.list_pets(usr.id), usr, lang)
     await cb.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 
@@ -517,7 +638,7 @@ async def show_stats(
     )
     analysis_btn = (
         t("stats.analysis.premium.btn", lang)
-        if usr.is_premium
+        if has_premium(usr)
         else t("stats.analysis.free.btn", lang)
     )
     kb = types.InlineKeyboardMarkup(
@@ -555,11 +676,13 @@ async def show_ai_progress(
         await cb.message.edit_text(t("error.no_pet", lang), reply_markup=get_back_keyboard(lang))
         return
 
-    if usr.is_premium:
+    if has_premium(usr):
         await cb.message.edit_text(t("ai.analyzing.premium", lang), parse_mode="HTML")
         try:
             result = await a_svc.premium_deep_analysis(pet, pet.training_days or 0, lang=lang)
         except Exception:
+            if not has_premium(usr):
+                await rate_limiter.release(cb.from_user.id, usr.timezone)
             await cb.message.edit_text(
                 t("ai.fallback", lang),
                 reply_markup=_ai_error_kb("menu_ai_progress", lang),
@@ -568,22 +691,25 @@ async def show_ai_progress(
             return
         header = t("ai.progress.premium.header", lang, name=pet.name)
     else:
-        if not await rate_limiter.is_allowed(cb.from_user.id):
+        if not await rate_limiter.reserve(cb.from_user.id, usr.timezone):
             await cb.message.edit_text(
-                t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+                t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+                reply_markup=_rate_limit_kb(lang),
+                parse_mode="HTML",
             )
             return
         await cb.message.edit_text(t("ai.analyzing.free", lang), parse_mode="HTML")
         try:
             result = await a_svc.summarize_progress(pet, pet.training_days or 0, lang=lang)
         except Exception:
+            if not has_premium(usr):
+                await rate_limiter.release(cb.from_user.id, usr.timezone)
             await cb.message.edit_text(
                 t("ai.fallback", lang),
                 reply_markup=_ai_error_kb("menu_ai_progress", lang),
                 parse_mode="HTML",
             )
             return
-        await rate_limiter.increment(cb.from_user.id)
         header = t("ai.progress.free.header", lang, name=pet.name)
 
     kb = types.InlineKeyboardMarkup(
@@ -644,7 +770,23 @@ async def _bg_generate_title(thread_id: int, question: str, session_fac, a_svc: 
                 thread.title = title
                 await session.commit()
     except Exception:
-        pass
+        logger.warning("thread title generation failed", exc_info=True)
+
+
+async def _bg_extract_facts(
+    pet_id: int, question: str, answer: str, session_fac, a_svc: AiService
+) -> None:
+    """Remember durable facts from one exchange. Never blocks or breaks the reply."""
+    try:
+        async with session_fac() as session:
+            repo = PetFactRepository(session)
+            known = [f.fact for f in await repo.list_active(pet_id, MAX_FACTS_STORED)]
+            new = merge_new_facts(known, await a_svc.extract_facts(question, answer, known))
+            room = MAX_FACTS_STORED - len(known)
+            if new and room > 0:
+                await repo.add_many(pet_id, new[:room], source="ai")
+    except Exception:
+        logger.warning("fact extraction failed", exc_info=True)
 
 
 async def _bg_refresh_summary(thread_id: int, session_fac, a_svc: AiService) -> None:
@@ -659,7 +801,7 @@ async def _bg_refresh_summary(thread_id: int, session_fac, a_svc: AiService) -> 
                     thread.summary = summary
                     await session.commit()
     except Exception:
-        pass
+        logger.warning("thread summary refresh failed", exc_info=True)
 
 
 @router.callback_query(F.data == "menu_coach")
@@ -728,7 +870,7 @@ async def coach_archive_thread(
     )
 
 
-@router.message(CoachState.waiting_for_question)
+@router.message(CoachState.waiting_for_question, F.text)
 @inject
 async def process_coach_question(
     msg: types.Message,
@@ -740,6 +882,7 @@ async def process_coach_question(
     rate_limiter: AiRateLimiter = Provide[AppContainer.ai_rate_limiter],
     coach_svc: CoachService = Provide[AppContainer.coach_service],
     session_fac=Provide[AppContainer.session_factory],
+    fact_repo: PetFactRepository = Provide[AppContainer.pet_fact_repo],
 ) -> None:
     if not msg.text or len(msg.text.strip()) < 2:
         return
@@ -754,14 +897,12 @@ async def process_coach_question(
         await msg.answer(t("error.no_pet", lang))
         return
 
-    if not usr.is_premium and not await rate_limiter.is_allowed(msg.from_user.id):
+    if not has_premium(usr) and not await rate_limiter.reserve(msg.from_user.id, usr.timezone):
         await state.clear()
-        try:
-            await msg.delete()
-        except Exception:
-            pass
         await msg.answer(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
 
@@ -776,34 +917,31 @@ async def process_coach_question(
         thread = await coach_svc.repo.create(usr.id)
         usr.active_coach_thread_id = thread.id
 
-    context = coach_svc.build_prompt_context(thread, usr.is_premium, lang)
+    context = coach_svc.build_prompt_context(thread, has_premium(usr), lang)
     owner_label = t("coach.role.owner", lang)
     history_with_q = (context + "\n" if context else "") + f"{owner_label}: {question}\n"
 
-    try:
-        await msg.delete()
-    except Exception:
-        pass
-
     m = await msg.answer(t("coach.thinking", lang), parse_mode="HTML")
     try:
-        answer = await a_svc.answer_coach_question(pet, history_with_q, lang=lang)
+        memory = pet_memory_block(pet, [f.fact for f in await fact_repo.list_active(pet.id, 20)])
+        answer = await a_svc.answer_coach_question(pet, history_with_q, lang=lang, memory=memory)
     except Exception:
+        if not has_premium(usr):
+            await rate_limiter.release(msg.from_user.id, usr.timezone)
         await m.edit_text(
             t("ai.fallback", lang), reply_markup=_ai_error_kb("menu_coach", lang), parse_mode="HTML"
         )
         return
 
-    if not usr.is_premium:
-        await rate_limiter.increment(msg.from_user.id)
-
     coach_svc.save_exchange(thread, question, answer)
     await session.commit()
 
+    spawn(_bg_extract_facts(pet.id, question, answer, session_fac, a_svc), name="extract_facts")
+
     if coach_svc.should_generate_title(thread):
-        asyncio.create_task(_bg_generate_title(thread.id, question, session_fac, a_svc))
+        spawn(_bg_generate_title(thread.id, question, session_fac, a_svc))
     if coach_svc.should_refresh_summary(thread):
-        asyncio.create_task(_bg_refresh_summary(thread.id, session_fac, a_svc))
+        spawn(_bg_refresh_summary(thread.id, session_fac, a_svc))
 
     await conv_repo.create(
         user_id=usr.id,
@@ -813,7 +951,8 @@ async def process_coach_question(
         topic="coach",
     )
 
-    await m.edit_text(answer, parse_mode="HTML", reply_markup=_coach_reply_keyboard(lang))
+    footer = await _remaining_footer(rate_limiter, usr, msg.from_user.id, lang)
+    await m.edit_text(answer + footer, parse_mode="HTML", reply_markup=_coach_reply_keyboard(lang))
 
 
 # ─── coach — photo (free, counts as 1 AI request) ────────────────────────────
@@ -840,10 +979,12 @@ async def process_coach_photo(
         await msg.answer(t("error.no_pet", lang))
         return
 
-    if not usr.is_premium and not await rate_limiter.is_allowed(msg.from_user.id):
+    if not has_premium(usr) and usr.media_trial_used_at is not None:
         await state.clear()
         await msg.answer(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("coach.media.voice.premium", lang),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
 
@@ -859,30 +1000,39 @@ async def process_coach_photo(
         thread = await coach_svc.repo.create(usr.id)
         usr.active_coach_thread_id = thread.id
 
-    context = coach_svc.build_prompt_context(thread, usr.is_premium, lang)
+    context = coach_svc.build_prompt_context(thread, has_premium(usr), lang)
 
     m = await msg.answer(t("coach.media.thinking", lang), parse_mode="HTML")
     bio = io.BytesIO()
     await msg.bot.download(msg.photo[-1], destination=bio)
+    trial_claimed = False
+    if not has_premium(usr):
+        trial_claimed = await u_svc.repo.claim_media_trial(usr.id)
+        if not trial_claimed:  # lost a race with a parallel photo
+            await m.edit_text(
+                t("coach.media.voice.premium", lang),
+                reply_markup=_rate_limit_kb(lang),
+                parse_mode="HTML",
+            )
+            return
     try:
         answer = await a_svc.analyze_media_question(
             pet, bio.getvalue(), "image/jpeg", caption, context, lang=lang
         )
     except Exception:
+        if trial_claimed:
+            await u_svc.repo.release_media_trial(usr.id)
         await m.edit_text(
             t("ai.fallback", lang), reply_markup=_ai_error_kb("menu_coach", lang), parse_mode="HTML"
         )
         return
-
-    if not usr.is_premium:
-        await rate_limiter.increment(msg.from_user.id)
 
     q_display = f"{t('coach.display.photo', lang)}{(' — ' + caption) if caption else ''}"
     coach_svc.save_exchange(thread, q_display, answer)
     await session.commit()
 
     if coach_svc.should_generate_title(thread):
-        asyncio.create_task(_bg_generate_title(thread.id, q_display, session_fac, a_svc))
+        spawn(_bg_generate_title(thread.id, q_display, session_fac, a_svc))
 
     await conv_repo.create(
         user_id=usr.id,
@@ -912,7 +1062,7 @@ async def process_coach_voice(
     usr = await u_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
     lang = normalize_locale(usr.language_code)
 
-    if not usr.is_premium:
+    if not has_premium(usr) and usr.media_trial_used_at is not None:
         await msg.answer(
             t("coach.media.voice.premium", lang),
             reply_markup=_rate_limit_kb(lang),
@@ -937,16 +1087,28 @@ async def process_coach_voice(
         thread = await coach_svc.repo.create(usr.id)
         usr.active_coach_thread_id = thread.id
 
-    context = coach_svc.build_prompt_context(thread, usr.is_premium, lang)
+    context = coach_svc.build_prompt_context(thread, has_premium(usr), lang)
 
     m = await msg.answer(t("coach.media.thinking", lang), parse_mode="HTML")
     bio = io.BytesIO()
     await msg.bot.download(msg.voice, destination=bio)
+    trial_claimed = False
+    if not has_premium(usr):
+        trial_claimed = await u_svc.repo.claim_media_trial(usr.id)
+        if not trial_claimed:
+            await m.edit_text(
+                t("coach.media.voice.premium", lang),
+                reply_markup=_rate_limit_kb(lang),
+                parse_mode="HTML",
+            )
+            return
     try:
         answer = await a_svc.analyze_media_question(
             pet, bio.getvalue(), "audio/ogg", None, context, lang=lang
         )
     except Exception:
+        if trial_claimed:
+            await u_svc.repo.release_media_trial(usr.id)
         await m.edit_text(
             t("ai.fallback", lang), reply_markup=_ai_error_kb("menu_coach", lang), parse_mode="HTML"
         )
@@ -957,7 +1119,7 @@ async def process_coach_voice(
     await session.commit()
 
     if coach_svc.should_generate_title(thread):
-        asyncio.create_task(_bg_generate_title(thread.id, voice_label, session_fac, a_svc))
+        spawn(_bg_generate_title(thread.id, voice_label, session_fac, a_svc))
 
     await conv_repo.create(
         user_id=usr.id,
@@ -987,7 +1149,7 @@ async def process_coach_video(
     usr = await u_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
     lang = normalize_locale(usr.language_code)
 
-    if not usr.is_premium:
+    if not has_premium(usr):
         await msg.answer(
             t("coach.media.video.premium", lang),
             reply_markup=_rate_limit_kb(lang),
@@ -1018,7 +1180,7 @@ async def process_coach_video(
         thread = await coach_svc.repo.create(usr.id)
         usr.active_coach_thread_id = thread.id
 
-    context = coach_svc.build_prompt_context(thread, usr.is_premium, lang)
+    context = coach_svc.build_prompt_context(thread, has_premium(usr), lang)
 
     m = await msg.answer(t("coach.media.thinking", lang), parse_mode="HTML")
     bio = io.BytesIO()
@@ -1038,7 +1200,7 @@ async def process_coach_video(
     await session.commit()
 
     if coach_svc.should_generate_title(thread):
-        asyncio.create_task(_bg_generate_title(thread.id, q_display, session_fac, a_svc))
+        spawn(_bg_generate_title(thread.id, q_display, session_fac, a_svc))
 
     await conv_repo.create(
         user_id=usr.id,
@@ -1153,6 +1315,7 @@ async def toggle_week_task(
     p_svc: PetService = Provide[AppContainer.pet_service],
     u_svc: UserService = Provide[AppContainer.user_service],
     t_svc: TrainingService = Provide[AppContainer.training_service],
+    act_repo: ActivityRepository = Provide[AppContainer.activity_repo],
 ) -> None:
     parts = cb.data.split(":")
     _, task_id_s, plan_id_s, day_s = parts[:4]
@@ -1182,6 +1345,8 @@ async def toggle_week_task(
         return
     lang = normalize_locale(usr.language_code)
     task, day_done = await t_svc.toggle_task(task_id, pet)
+    if day_done and task.is_completed:
+        await record_task_day(act_repo, pet, usr)
     if not answered:
         toast_key = (
             "training.task.toggle.done" if task.is_completed else "training.task.toggle.undone"
@@ -1200,7 +1365,7 @@ async def toggle_week_task(
     lang = normalize_locale(usr.language_code)
     text = TrainingService.format_week_day(plan, day, lang)
     if day_done and task.is_completed:
-        streak_n = pet.training_days or 1
+        streak_n = (await streak_for(act_repo, pet, usr)) or 1
         days_word = pluralize(
             streak_n,
             lang,
@@ -1219,7 +1384,7 @@ async def toggle_week_task(
         )
 
     shop = (
-        get_shop_button(pet, usr.is_premium, AFTER_COMPLETION, lang=lang)
+        get_shop_button(pet, has_premium(usr), AFTER_COMPLETION, lang=lang)
         if (day_done and task.is_completed)
         else None
     )
@@ -1274,9 +1439,11 @@ async def refresh_week_plan(
     if not pet:
         return
 
-    if not usr.is_premium and not await rate_limiter.is_allowed(cb.from_user.id):
+    if not has_premium(usr) and not await rate_limiter.reserve(cb.from_user.id, usr.timezone):
         await cb.message.edit_text(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
 
@@ -1287,14 +1454,14 @@ async def refresh_week_plan(
     try:
         plan = await t_svc.get_or_create_week(usr.id, pet, lang=lang)
     except Exception:
+        if not has_premium(usr):
+            await rate_limiter.release(cb.from_user.id, usr.timezone)
         await cb.message.edit_text(
             t("ai.fallback", lang),
             reply_markup=_ai_error_kb("menu_week_plan", lang),
             parse_mode="HTML",
         )
         return
-    if not usr.is_premium:
-        await rate_limiter.increment(cb.from_user.id)
     text = TrainingService.format_week_day(plan, 1, lang)
     await cb.message.edit_text(
         text,
@@ -1325,9 +1492,11 @@ async def explain_daily(
     await cb.answer()
     usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
     lang = normalize_locale(usr.language_code)
-    if not usr.is_premium and not await rate_limiter.is_allowed(cb.from_user.id):
+    if not has_premium(usr) and not await rate_limiter.reserve(cb.from_user.id, usr.timezone):
         await cb.message.edit_text(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
     await cb.message.edit_text(
@@ -1336,14 +1505,14 @@ async def explain_daily(
     try:
         explanation = await a_svc.explain_exercise(task.title, task.description or "", lang=lang)
     except Exception:
+        if not has_premium(usr):
+            await rate_limiter.release(cb.from_user.id, usr.timezone)
         await cb.message.edit_text(
             t("ai.fallback", lang),
             reply_markup=_ai_error_kb("menu_training", lang),
             parse_mode="HTML",
         )
         return
-    if not usr.is_premium:
-        await rate_limiter.increment(cb.from_user.id)
     pet = await p_svc.get_pet(usr.id)
     kb = types.InlineKeyboardMarkup(
         inline_keyboard=[
@@ -1352,7 +1521,7 @@ async def explain_daily(
                     text=t("training.explain.back_daily.btn", lang), callback_data="menu_training"
                 )
             ],
-            *([[get_shop_button(pet, usr.is_premium, AFTER_EXERCISE, lang=lang)]] if pet else []),
+            *([[get_shop_button(pet, has_premium(usr), AFTER_EXERCISE, lang=lang)]] if pet else []),
         ]
     )
     await cb.message.edit_text(explanation, reply_markup=kb, parse_mode="HTML")
@@ -1378,9 +1547,11 @@ async def explain_weekly(
     await cb.answer()
     usr = await u_svc.get_or_create_telegram_user(telegram_id=cb.from_user.id)
     lang = normalize_locale(usr.language_code)
-    if not usr.is_premium and not await rate_limiter.is_allowed(cb.from_user.id):
+    if not has_premium(usr) and not await rate_limiter.reserve(cb.from_user.id, usr.timezone):
         await cb.message.edit_text(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
     await cb.message.edit_text(
@@ -1389,14 +1560,14 @@ async def explain_weekly(
     try:
         explanation = await a_svc.explain_exercise(task.title, task.description or "", lang=lang)
     except Exception:
+        if not has_premium(usr):
+            await rate_limiter.release(cb.from_user.id, usr.timezone)
         await cb.message.edit_text(
             t("ai.fallback", lang),
             reply_markup=_ai_error_kb(f"week_day:{plan_id}:{day}", lang),
             parse_mode="HTML",
         )
         return
-    if not usr.is_premium:
-        await rate_limiter.increment(cb.from_user.id)
     pet = await p_svc.get_pet(usr.id)
     kb = types.InlineKeyboardMarkup(
         inline_keyboard=[
@@ -1406,7 +1577,7 @@ async def explain_weekly(
                     callback_data=f"week_day:{plan_id}:{day}",
                 )
             ],
-            *([[get_shop_button(pet, usr.is_premium, AFTER_EXERCISE, lang=lang)]] if pet else []),
+            *([[get_shop_button(pet, has_premium(usr), AFTER_EXERCISE, lang=lang)]] if pet else []),
         ]
     )
     await cb.message.edit_text(explanation, reply_markup=kb, parse_mode="HTML")
@@ -1793,20 +1964,25 @@ async def handle_voice_action(
     conv_repo: AiConversationRepository = Provide[AppContainer.ai_conversation_repo],
     rate_limiter: AiRateLimiter = Provide[AppContainer.ai_rate_limiter],
     metrics: BotMetrics = Provide[AppContainer.metrics],
+    act_repo: ActivityRepository = Provide[AppContainer.activity_repo],
 ) -> None:
     usr = await u_svc.get_or_create_telegram_user(telegram_id=msg.from_user.id)
     lang = normalize_locale(usr.language_code)
     pet = await p_svc.get_pet(usr.id)
     if not pet:
+        await msg.answer(t("error.no_pet", lang), reply_markup=get_back_keyboard(lang))
         return
 
-    if not usr.is_premium and not await rate_limiter.is_allowed(msg.from_user.id):
-        try:
-            await msg.delete()
-        except Exception:
-            pass
+    has_media = bool(msg.voice or msg.photo)
+    if (
+        not has_premium(usr)
+        and not has_media
+        and not await rate_limiter.is_allowed(msg.from_user.id, usr.timezone)
+    ):
         await msg.answer(
-            t("ai.rate_limit", lang), reply_markup=_rate_limit_kb(lang), parse_mode="HTML"
+            t("ai.rate_limit", lang, limit=FREE_DAILY_LIMIT),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
         )
         return
 
@@ -1815,6 +1991,16 @@ async def handle_voice_action(
     mime_type: str | None = None
     text_content: str | None = None
     is_media = bool(msg.voice or msg.photo)
+
+    if is_media and not has_premium(usr) and usr.media_trial_used_at is not None:
+        # Trial already spent: no download, no Gemini call.
+        await metrics.inc(BotMetrics.PREMIUM_GATE)
+        await msg.answer(
+            t("coach.media.voice.premium", lang),
+            reply_markup=_rate_limit_kb(lang),
+            parse_mode="HTML",
+        )
+        return
 
     if msg.voice:
         bio = io.BytesIO()
@@ -1837,10 +2023,24 @@ async def handle_voice_action(
     today_tasks = tasks_for_today(active_plan)
     task_titles = [tk.title for tk in today_tasks]
 
-    try:
-        await msg.delete()
-    except Exception:
-        pass
+    trial_claimed = False
+    quota_reserved = False
+    if not has_premium(usr):
+        if is_media:
+            trial_claimed = await u_svc.repo.claim_media_trial(usr.id)
+        else:
+            quota_reserved = await rate_limiter.reserve(msg.from_user.id, usr.timezone)
+        if not (trial_claimed or quota_reserved):
+            await msg.answer(
+                t(
+                    "coach.media.voice.premium" if is_media else "ai.rate_limit",
+                    lang,
+                    limit=FREE_DAILY_LIMIT,
+                ),
+                reply_markup=_rate_limit_kb(lang),
+                parse_mode="HTML",
+            )
+            return
 
     m = await msg.answer(t("voice_action.thinking", lang), parse_mode="HTML")
 
@@ -1854,24 +2054,46 @@ async def handle_voice_action(
             mime_type=mime_type,
         )
     except Exception:
+        if trial_claimed:
+            await u_svc.repo.release_media_trial(usr.id)
+        elif quota_reserved:
+            await rate_limiter.release(msg.from_user.id, usr.timezone)
         await m.edit_text(
             t("ai.fallback", lang), reply_markup=_ai_error_kb("menu_main", lang), parse_mode="HTML"
         )
         return
-
-    if not usr.is_premium:
-        await rate_limiter.increment(msg.from_user.id)
 
     action = intent.get("action", "none")
     ai_message = (intent.get("message") or "").strip()
 
     if intent.get("_is_fallback"):
         await metrics.inc(BotMetrics.FALLBACK)
+        if trial_claimed:
+            await u_svc.repo.release_media_trial(usr.id)  # AI failed: don't charge
+        elif quota_reserved:
+            await rate_limiter.release(msg.from_user.id, usr.timezone)
 
-    if action == "mark_done" and task_titles:
+    walk_minutes = intent.get("walk_minutes")
+    walk_ok = (
+        action == "log_walk"
+        and isinstance(walk_minutes, int)
+        and not isinstance(walk_minutes, bool)
+        and 5 <= walk_minutes <= 240
+    )
+    if walk_ok:
+        today = local_now(usr.timezone).date()
+        await act_repo.log_walk(pet.id, today, walk_minutes)
+        streak_now = await streak_for(act_repo, pet, usr)
+        reply = t("voice_action.walk", lang, m=walk_minutes, n=streak_now)
+        if ai_message:
+            reply += "\n\n" + ai_message
+        kb = get_back_keyboard(lang)
+    elif action == "mark_done" and task_titles:
         task, plan_done = await t_svc.mark_task_by_hint(pet, intent.get("task_hint", ""))
         if task:
             await metrics.inc(BotMetrics.MARK_DONE)
+            if plan_done:
+                await record_task_day(act_repo, pet, usr)
             reply = t("voice_action.marked", lang, task=task.title)
             if ai_message:
                 reply += "\n\n" + ai_message
@@ -1894,7 +2116,7 @@ async def handle_voice_action(
                 reply = ai_message or t("training.task.not_found", lang)
             kb = get_back_keyboard(lang)
     else:
-        if is_media and not usr.is_premium:
+        if is_media and not has_premium(usr):
             await metrics.inc(BotMetrics.PREMIUM_GATE)
             reply = t("coach.media.voice.premium", lang)
             kb = _rate_limit_kb(lang)

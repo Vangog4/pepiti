@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Annotated
 from urllib.parse import quote
 
@@ -163,7 +164,8 @@ async def export_training_pdf(
         for t in (plan.tasks or [])
     ]
 
-    pdf_bytes = generate_training_pdf(
+    pdf_bytes = await asyncio.to_thread(
+        generate_training_pdf,
         pet_name=pet.name or "Питомец",
         plan_title=plan.title or "План тренировок",
         plan_goal=plan.goal or "",

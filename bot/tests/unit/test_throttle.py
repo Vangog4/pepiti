@@ -4,12 +4,12 @@ import sys
 
 sys.path.insert(0, ".")
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 import redis.asyncio as aioredis
 
 from app.bot.middlewares.throttle import ThrottlingMiddleware
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 

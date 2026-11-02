@@ -36,6 +36,7 @@
 # tests/e2e/test_onboarding.py (TODO)
 from telethon.sync import TelegramClient
 
+
 async def test_start_command(client, bot_username):
     await client.send_message(bot_username, "/start")
     response = await client.get_messages(bot_username, limit=1)

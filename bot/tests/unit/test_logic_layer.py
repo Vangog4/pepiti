@@ -8,8 +8,9 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from app.infrastructure.redis.ai_rate_limit import FREE_DAILY_LIMIT
 from app.logic.cascade import ModelCascade
-from app.logic.rules import contains_forbidden, get_rules, reload_rules, rule
+from app.logic.rules import contains_forbidden, reload_rules, rule
 from app.logic.schemas import (
     PetProfileSchema,
     TrainingIntentSchema,
@@ -19,8 +20,6 @@ from app.logic.schemas import (
 from app.services.coach_service import CoachService
 from app.services.referral_service import REFERRAL_BONUS_DAYS, REFERRAL_MILESTONES
 from app.services.subscription_service import PREMIUM_1M_STARS, PREMIUM_DURATION_DAYS
-from app.infrastructure.redis.ai_rate_limit import FREE_DAILY_LIMIT
-
 
 # ── rules.json ───────────────────────────────────────────────────────────────
 
@@ -30,12 +29,12 @@ def test_rules_json_loads():
     assert "ai" in rules
     assert "premium" in rules
     assert "referral" in rules
-    assert rules["ai"]["free_daily_limit"] == 5
+    assert rules["ai"]["free_daily_limit"] == 3
 
 
 def test_rule_dotted_path():
     reload_rules()
-    assert rule("premium.stars_1m") == 299
+    assert rule("premium.stars_1m") == 950
     assert rule("missing.path", default=42) == 42
 
 

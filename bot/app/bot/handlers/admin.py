@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from datetime import datetime, timedelta
 
@@ -10,6 +9,7 @@ from dependency_injector.wiring import Provide, inject
 
 from app.bot.filters.admin import IsAdmin
 from app.core.container import AppContainer
+from app.core.tasks import spawn
 from app.infrastructure.db.models.pet import PetModel
 from app.infrastructure.db.models.subscription import SubscriptionModel
 from app.infrastructure.db.repositories.user_repo import UserRepository
@@ -19,6 +19,7 @@ from app.infrastructure.redis.metrics import BotMetrics
 from app.logic.cascade import ModelCascade
 from app.logic.rules import rule
 from app.services.broadcast_service import run_broadcast
+from app.services.entitlements import has_premium
 
 logger = logging.getLogger(__name__)
 router = Router(name="admin_router")
@@ -38,6 +39,7 @@ def _admin_keyboard() -> types.InlineKeyboardMarkup:
             [types.InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
             [types.InlineKeyboardButton(text="🧠 AI logic", callback_data="admin_ai_stats")],
             [types.InlineKeyboardButton(text="🔗 Рефералы", callback_data="admin_ref_stats")],
+            [types.InlineKeyboardButton(text="📈 Воронка", callback_data="admin_funnel")],
         ]
     )
 
@@ -82,6 +84,42 @@ async def admin_stats(
         f"🔥 Активных: <b>{stats['active_today']}</b>  |  "
         f"📈 Конверсия: <b>{conv}%</b>"
     )
+    await cb.message.edit_text(text, reply_markup=_admin_keyboard(), parse_mode="HTML")
+
+
+@router.callback_query(F.data == "admin_funnel")
+async def admin_funnel(cb: types.CallbackQuery) -> None:
+    """Paywall -> plans -> invoice -> paid, unique users over 7 and 30 days."""
+    from app.infrastructure.redis.funnel import conversion_rates, get_funnel
+
+    await cb.answer()
+    funnel = get_funnel()
+    blocks = []
+    for days in (7, 30):
+        s = await funnel.summary(days)
+        r = conversion_rates(s)
+        blocks.append(
+            f"<b>{days} дн.</b>\n"
+            f"🚧 Пейволл: <b>{s['paywall']}</b>\n"
+            f"📋 Тарифы: <b>{s['plans']}</b> ({r['plans_from_paywall']}%)\n"
+            f"🧾 Инвойс: <b>{s['invoice']}</b> ({r['invoice_from_plans']}%)\n"
+            f"⭐ Оплата: <b>{s['paid']}</b> ({r['paid_from_invoice']}%)\n"
+            f"🎯 Из пейволла в оплату: <b>{r['paid_from_paywall']}%</b>"
+        )
+    from app.services.pricing import CONTROL, _weights, ab_enabled
+
+    if ab_enabled():
+        names = [CONTROL, *sorted(_weights())]
+        lines = ["<b>A/B цена, 30 дн.</b>"]
+        for name in names:
+            v = await funnel.summary(30, variant=name)
+            r = conversion_rates(v)
+            lines.append(
+                f"• <b>{name}</b>: пейволл {v['paywall']} → инвойс {v['invoice']} "
+                f"→ оплата {v['paid']} ({r['paid_from_paywall']}%)"
+            )
+        blocks.append("\n".join(lines))
+    text = "📈 <b>Воронка</b> (уникальные пользователи)\n\n" + "\n\n".join(blocks)
     await cb.message.edit_text(text, reply_markup=_admin_keyboard(), parse_mode="HTML")
 
 
@@ -268,9 +306,9 @@ async def lookup_user(
     pet = pet_result.scalar_one_or_none()
 
     premium_status = "❌ нет"
-    if user.is_premium and user.subscription_expires_at:
+    if has_premium(user) and user.subscription_expires_at:
         premium_status = f"✅ до {user.subscription_expires_at.strftime('%d.%m.%Y')}"
-    elif user.is_premium:
+    elif has_premium(user):
         premium_status = "✅ активен"
 
     onboard = (
@@ -436,4 +474,4 @@ async def broadcast_confirm(
     )
 
     await alog.log(cb.from_user.id, "broadcast", target_label, f"queued={len(telegram_ids)}")
-    asyncio.create_task(run_broadcast(cb.bot, telegram_ids, text, cb.from_user.id))
+    spawn(run_broadcast(cb.bot, telegram_ids, text, cb.from_user.id))

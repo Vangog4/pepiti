@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 
+from sqlalchemy.exc import IntegrityError
+
 from app.infrastructure.db.models.subscription import SubscriptionModel
 from app.infrastructure.db.repositories.subscription_repo import SubscriptionRepository
 from app.infrastructure.db.repositories.user_repo import UserRepository
@@ -22,6 +24,7 @@ class SubscriptionService:
         *,
         days: int | None = None,
         plan_code: str = "premium_1m",
+        provider: str = "telegram_stars",
     ) -> SubscriptionModel:
         """Activate paid premium, stacking on remaining paid/referral days.
 
@@ -38,12 +41,21 @@ class SubscriptionService:
         base = max(current_end or now, now)
         expires_at = base + timedelta(days=duration)
 
-        sub = await self.sub_repo.create(
-            user_id=user_id,
-            expires_at=expires_at,
-            charge_id=charge_id,
-            plan_code=plan_code,
-        )
+        try:
+            sub = await self.sub_repo.create(
+                user_id=user_id,
+                expires_at=expires_at,
+                charge_id=charge_id,
+                plan_code=plan_code,
+                provider=provider,
+            )
+        except IntegrityError:
+            # Concurrent duplicate update lost the race on the UNIQUE(charge_id) index.
+            await self.sub_repo.session.rollback()
+            winner = await self.sub_repo.get_by_charge_id(charge_id)
+            if winner is None:
+                raise
+            return winner
 
         user = await self.user_repo.get_by_telegram_id(telegram_id)
         if user:

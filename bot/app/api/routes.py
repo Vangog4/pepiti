@@ -13,6 +13,7 @@ from app.api.auth import validate_init_data
 from app.api.mobile_auth import decode_jwt, issue_jwt, verify_vk_token
 from app.core.config import settings
 from app.core.shop import SHOP_URL_BY_SIZE, SHOP_URL_LONGPLAY, SHOP_URL_MAIN, SHOP_URL_TRAINING
+from app.core.tasks import spawn
 from app.i18n import normalize_locale, t
 from app.infrastructure.db.models.coach_thread import CoachThreadModel
 from app.infrastructure.db.models.mobile_auth import MobileAuthModel
@@ -24,6 +25,7 @@ from app.infrastructure.db.repositories.training_repo import TrainingPlanReposit
 from app.infrastructure.redis.admin_log import AdminLog
 from app.infrastructure.redis.metrics import BotMetrics
 from app.services.broadcast_service import run_broadcast
+from app.services.entitlements import has_premium
 from app.services.referral_service import (
     REFERRAL_BONUS_DAYS,
     REFERRAL_MILESTONES,
@@ -339,7 +341,7 @@ async def dashboard(request: web.Request) -> web.Response:
         "user": {
             "telegram_id": user.telegram_id,
             "first_name": user.first_name,
-            "is_premium": user.is_premium,
+            "is_premium": has_premium(user),
             "subscription_expires_at": (
                 user.subscription_expires_at.isoformat() if user.subscription_expires_at else None
             ),
@@ -611,9 +613,9 @@ async def broadcast(request: web.Request) -> web.Response:
 
     alog: AdminLog | None = request.app.get("admin_log")
     if alog:
-        asyncio.create_task(alog.log(telegram_id, "broadcast", target, f"queued={len(ids)}"))
+        spawn(alog.log(telegram_id, "broadcast", target, f"queued={len(ids)}"))
 
-    asyncio.create_task(run_broadcast(bot, ids, text, telegram_id, reply_markup=reply_markup))
+    spawn(run_broadcast(bot, ids, text, telegram_id, reply_markup=reply_markup))
     return web.json_response({"ok": True, "queued": len(ids), "target": target})
 
 
@@ -1014,7 +1016,8 @@ async def download_training_pdf(request: web.Request) -> web.Response:
     from app.services.pdf_service import generate_training_pdf
 
     lang = normalize_locale(user.language_code)
-    pdf_bytes = generate_training_pdf(
+    pdf_bytes = await asyncio.to_thread(
+        generate_training_pdf,
         pet_name=pet.name or "Питомец",
         plan_title=plan.title or "План тренировок",
         plan_goal=plan.goal or "",

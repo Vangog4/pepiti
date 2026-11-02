@@ -151,6 +151,7 @@ class TestResetKeepsThreads:
 
     def test_reset_py_does_not_import_coach_thread_delete(self):
         import inspect
+
         import app.bot.handlers.reset as reset_mod
 
         src = inspect.getsource(reset_mod)

@@ -1,6 +1,6 @@
 {
   "ai": {
-    "free_daily_limit": 5,
+    "free_daily_limit": 3,
     "schema_retries": 1,
     "models": {
       "default": "gemini-2.5-flash-lite",
@@ -39,17 +39,33 @@
     }
   },
   "premium": {
-    "stars_1m": 299,
+    "stars_1m": 950,
     "duration_days": 30
   },
   "referral": {
     "bonus_days": 3,
     "daily_limit": 10,
     "milestones": [
-      {"count": 3, "bonus_days": 7, "plan_code": "milestone_3"},
-      {"count": 5, "bonus_days": 14, "plan_code": "milestone_5"},
-      {"count": 10, "bonus_days": 30, "plan_code": "milestone_10"},
-      {"count": 25, "bonus_days": 90, "plan_code": "milestone_25"}
+      {
+        "count": 3,
+        "bonus_days": 7,
+        "plan_code": "milestone_3"
+      },
+      {
+        "count": 5,
+        "bonus_days": 14,
+        "plan_code": "milestone_5"
+      },
+      {
+        "count": 10,
+        "bonus_days": 30,
+        "plan_code": "milestone_10"
+      },
+      {
+        "count": 25,
+        "bonus_days": 90,
+        "plan_code": "milestone_25"
+      }
     ]
   },
   "coach": {
@@ -59,7 +75,127 @@
     "summary_every": 10
   },
   "shop": {
-    "puppy_age_tokens": ["щенок", "puppy"],
-    "small_size_tokens": ["маленький", "small", "до 10"]
+    "puppy_age_tokens": [
+      "щенок",
+      "puppy"
+    ],
+    "small_size_tokens": [
+      "маленький",
+      "small",
+      "до 10"
+    ]
+  },
+  "products": {
+    "premium_1m": {
+      "stars": 950,
+      "rub": 1490,
+      "days": 30,
+      "recurring": true
+    },
+    "premium_3m": {
+      "stars": 2200,
+      "rub": 3490,
+      "days": 90,
+      "recurring": false
+    },
+    "premium_12m": {
+      "stars": 5000,
+      "rub": 7990,
+      "days": 365,
+      "recurring": false
+    }
+  },
+  "health": {
+    "intervals": {
+      "vaccine": 365,
+      "ticks": 30,
+      "worms": 90
+    },
+    "remind_days_before": 3,
+    "snooze_days": 3
+  },
+  "tracker": {
+    "freezes_per_week_free": 1,
+    "freezes_per_week_premium": 3,
+    "walk_minutes": [
+      15,
+      30,
+      60
+    ],
+    "walks_for_badge": 10,
+    "streak_badges": [
+      7,
+      30,
+      100
+    ],
+    "weekly_report_hour": 19
+  },
+  "copy": {
+    "banned_ru": [
+      "осуществ",
+      "в рамках",
+      "в целях",
+      "посредством",
+      "вышеуказанн",
+      "на данный момент",
+      "является",
+      "производить",
+      "ознакомьтесь",
+      "предоставляется",
+      "данный ",
+      "данная ",
+      "данное ",
+      "необходимо"
+    ],
+    "formal_you_allowed_keys": [
+      "invite.how.3"
+    ],
+    "ai_cliches": [
+      "отличный вопрос",
+      "хороший вопрос",
+      "важно отметить",
+      "стоит отметить",
+      "давайте разберёмся",
+      "давай разберёмся",
+      "в заключение",
+      "надеюсь, это поможет",
+      "не стесняйтесь",
+      "great question",
+      "good question",
+      "it's important to note",
+      "i hope this helps"
+    ]
+  },
+  "nudges": {
+    "renewal_days_before": [
+      3,
+      1
+    ],
+    "evening_local_hour": 20,
+    "evening_min_streak": 2,
+    "dedup_ttl_days": 10,
+    "seasons": {
+      "4": "ticks",
+      "7": "heat",
+      "12": "reagents"
+    },
+    "season_send_day": 5,
+    "winback_days_after": 3,
+    "season_dedup_days": 40
+  },
+  "pets": {
+    "free_max": 1,
+    "premium_max": 3
+  },
+  "weight": {
+    "alert_pct": 10,
+    "remind_days": 30,
+    "compare_days": 30,
+    "min_gap_days": 7
+  },
+  "ab": {
+    "enabled": false,
+    "salt": "pepito-2026-11",
+    "variants": {}
   }
 }

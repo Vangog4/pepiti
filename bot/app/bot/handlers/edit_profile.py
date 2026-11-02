@@ -14,7 +14,10 @@ from app.bot.keyboards.edit_profile import (
 from app.bot.keyboards.main_menu import get_back_keyboard
 from app.bot.states.edit_profile import EditProfileStates
 from app.core.container import AppContainer
+from app.core.tz_utils import local_now
 from app.i18n import normalize_locale, t
+from app.infrastructure.db.repositories.weight_repo import WeightRepository
+from app.services.passport import SPECIAL_FIELDS, PassportValueError, parse_passport_value
 from app.services.pet_service import PetService
 from app.services.user_service import UserService
 
@@ -29,6 +32,10 @@ FIELD_LABELS: dict[str, tuple[str, object]] = {
     "age_category": ("edit_profile.field.age.prompt", get_age_inline),
     "size_category": ("edit_profile.field.size.prompt", get_size_inline),
     "timezone": ("edit_profile.field.timezone.prompt", get_timezone_inline),
+    "weight_kg": ("edit_profile.field.weight.prompt", None),
+    "birth_date": ("edit_profile.field.birth.prompt", None),
+    "allergies": ("edit_profile.field.allergies.prompt", None),
+    "chronic_conditions": ("edit_profile.field.chronic.prompt", None),
 }
 
 # Fields that belong to UserModel (not PetModel)
@@ -164,6 +171,7 @@ async def save_profile_field_text(
     state: FSMContext,
     u_svc: UserService = Provide[AppContainer.user_service],
     p_svc: PetService = Provide[AppContainer.pet_service],
+    w_repo: WeightRepository = Provide[AppContainer.weight_repo],
 ) -> None:
     data = await state.get_data()
     field_name = data.get("field_name")
@@ -177,14 +185,17 @@ async def save_profile_field_text(
     if not text:
         await msg.answer(t("edit_profile.error.empty", lang))
         return
-    if len(text) > 50:
+    if len(text) > (200 if field_name in SPECIAL_FIELDS else 50):
         await msg.answer(t("edit_profile.error.too_long", lang, n=len(text)))
         return
 
-    try:
-        await msg.delete()
-    except Exception:
-        pass
+    value: object = text
+    if field_name in SPECIAL_FIELDS:
+        try:
+            value = parse_passport_value(field_name, text)
+        except PassportValueError:
+            await msg.answer(t("edit_profile.error.invalid", lang))
+            return
 
     if field_name in USER_FIELDS:
         setattr(usr, field_name, text)
@@ -195,7 +206,9 @@ async def save_profile_field_text(
             await state.clear()
             await msg.answer(t("error.no_pet", lang), reply_markup=get_back_keyboard(lang))
             return
-        setattr(pet, field_name, text)
+        setattr(pet, field_name, value)
+        if field_name == "weight_kg":  # feed the weight trend, not just the passport
+            await w_repo.add(pet.id, value, local_now(usr.timezone).date())
         await p_svc.repo.session.commit()
     await state.clear()
 
@@ -214,7 +227,13 @@ async def save_profile_field_text(
         ]
     )
     await msg.answer(
-        t("edit_profile.saved", lang, value=text),
+        t(
+            "edit_profile.saved",
+            lang,
+            value=", ".join(value)
+            if isinstance(value, list)
+            else (value.strftime("%d.%m.%Y") if hasattr(value, "strftime") else value),
+        ),
         reply_markup=kb,
         parse_mode="HTML",
     )

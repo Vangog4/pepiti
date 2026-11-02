@@ -7,17 +7,23 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel, ValidationError
 
+from app.core.tasks import spawn
 from app.infrastructure.db.models.pet import PetModel
 from app.infrastructure.redis.metrics import BotMetrics
 from app.logic.cascade import ModelCascade
+from app.logic.humanize import strip_cliches
 from app.logic.rules import contains_forbidden, get_rules, rule
 from app.logic.schemas import (
+    BreedGuess,
+    FactExtraction,
+    MediaVerdict,
     PetProfileSchema,
     TrainingIntentSchema,
     TrainingPlanSchema,
     WeekPlanSchema,
 )
 from app.logic.trace import ai_trace
+from app.services.media_verdict import render_verdict
 
 logger = logging.getLogger("pepito.ai")
 
@@ -39,9 +45,28 @@ _LANG_NAMES: dict[str, str] = {
 }
 
 
+class AiUnavailableError(RuntimeError):
+    """AI call failed. Handlers must show a generic message and must NOT charge quota."""
+
+
+_TONE = {
+    "ru": (
+        "Address the owner informally as «ты» (never «вы»). Talk like a friendly trainer: "
+        "short plain sentences, no bureaucratic phrases, no filler like «Отличный вопрос» "
+        "or «Важно отметить»."
+    ),
+    "en": "Friendly, plain language. No filler like 'Great question' or 'It's important to note'.",
+    "de": "Address the owner informally as «du». Friendly, plain, no filler phrases.",
+    "fr": "Address the owner informally as «tu». Friendly, plain, no filler phrases.",
+    "es": "Address the owner informally as «tú». Friendly, plain, no filler phrases.",
+    "pt": "Address the owner informally as «você». Friendly, plain, no filler phrases.",
+}
+
+
 def _lang_instruction(lang: str) -> str:
     name = _LANG_NAMES.get(lang, "Russian (русский)")
-    return f"\n\nIMPORTANT: Respond strictly in {name}."
+    tone = _TONE.get(lang, _TONE["en"])
+    return f"\n\nIMPORTANT: Respond strictly in {name}. {tone}"
 
 
 def _coach_format(lang: str) -> str:
@@ -329,7 +354,10 @@ class AiService:
 
     async def _generate_text(self, *, kind: str, contents: Any) -> str:
         model = self._get_cascade().model_for(kind)
-        return await self._call_model(kind=kind, model=model, contents=contents)
+        raw = await self._call_model(kind=kind, model=model, contents=contents)
+        if not (raw or "").strip():
+            raise AiUnavailableError(f"empty response for {kind}")
+        return raw
 
     async def _generate_structured(
         self,
@@ -407,16 +435,13 @@ class AiService:
 
     def _guard_html(self, text: str, kind: str | None = None) -> str:
         """Postprocess + soft policy check + optional length cap from rules."""
-        out = self._postprocess(text)
+        out = strip_cliches(self._postprocess(text))
         hit = contains_forbidden(out)
         if hit:
             logger.warning("forbidden phrase in AI output: %s", hit)
             # fire-and-forget metric when event loop is running (handlers always are)
             try:
-                import asyncio
-
-                loop = asyncio.get_running_loop()
-                loop.create_task(self._metric(BotMetrics.AI_FORBIDDEN))
+                spawn(self._metric(BotMetrics.AI_FORBIDDEN))
             except RuntimeError:
                 pass
             out = re.sub(
@@ -538,7 +563,8 @@ class AiService:
             raw = await self._generate_text(kind="explain_exercise", contents=prompt)
             return self._guard_html(raw, kind="explain_exercise")
         except Exception as e:
-            return f"⚠️ Explanation unavailable. Try again later.\n<i>{e}</i>"
+            logger.warning("AI call failed: %s", e)
+            raise AiUnavailableError(str(e)) from e
 
     async def analyze_media_question(
         self,
@@ -549,9 +575,9 @@ class AiService:
         history: str,
         lang: str = "ru",
     ) -> str:
+        """Analyse a photo/voice/video. Strict MediaVerdict -> HTML; raises AiUnavailableError."""
         breed = pet.breed or "unknown breed"
         age = pet.age_category or "unknown age"
-
         if "video" in mime_type:
             media_word = "video"
         elif "audio" in mime_type:
@@ -565,23 +591,31 @@ class AiService:
             + (f" Caption: {caption}" if caption else "")
             + ("\nConversation history:\n" + history + "\n" if history else "")
             + f"\nAnalyze the {media_word} and give specific training advice.\n\n"
-            + _media_format(lang)
-            + _HTML_RULE
-            + "\nMax 900 characters. Do not give veterinary diagnoses. "
-            "Section headers must be in the reply language." + _lang_instruction(lang)
+            "Return ONLY JSON with exactly these keys: "
+            '{"summary": "<what you see, 1-2 sentences>", '
+            '"urgency": "low" | "vet_soon" | "vet_now", '
+            '"steps": ["<concrete step>", ...up to 5]}. '
+            'urgency="vet_now" ONLY for signs of acute danger (injury, poisoning, seizure, '
+            'breathing trouble, heavy bleeding); "vet_soon" for worrying signs that can wait '
+            'a few days; otherwise "low". Never give a veterinary diagnosis. '
+            "Plain text only, no HTML. Write summary and steps in the reply language."
+            + _lang_instruction(lang)
         )
-
         contents = [
             types.Part.from_bytes(data=media_bytes, mime_type=mime_type),
-            types.Part.from_text(prompt),
+            types.Part.from_text(text=prompt),
         ]
-        try:
-            raw = await self._generate_text(kind="media_analysis", contents=contents)
-            return self._guard_html(raw, kind="media_analysis")
-        except Exception as e:
-            return f"⚠️ Media analysis unavailable. Try again.\n<i>{e}</i>"
+        verdict = await self._generate_structured(
+            kind="media_analysis", contents=contents, schema=MediaVerdict
+        )
+        if verdict is None:
+            raise AiUnavailableError("media verdict failed schema validation")
+        # No length cap here: a vet_now warning must never be truncated.
+        return self._guard_html(render_verdict(verdict, lang))
 
-    async def answer_coach_question(self, pet: PetModel, history: str, lang: str = "ru") -> str:
+    async def answer_coach_question(
+        self, pet: PetModel, history: str, lang: str = "ru", memory: str = ""
+    ) -> str:
         breed = pet.breed or "unknown breed"
         age = pet.age_category or "unknown age"
         goal = pet.goal or "general training"
@@ -589,7 +623,8 @@ class AiService:
         prompt = (
             f"You are a professional dog behaviourist and trainer. Consulting about:\n"
             f"<b>{pet.name}</b> — {breed}, {age}. Owner's goal: {goal}.\n\n"
-            f"CONVERSATION HISTORY:\n{history}\n\n"
+            + (f"WHAT YOU KNOW ABOUT THE DOG:\n{memory}\n\n" if memory else "")
+            + f"CONVERSATION HISTORY:\n{history}\n\n"
             "DEFAULT: answer in the structured format below. "
             "If a detail is missing, assume a typical case and state the assumption in one short clause "
             "(e.g. leash pulling → assume forward pulling on walks).\n"
@@ -606,7 +641,8 @@ class AiService:
             raw = await self._generate_text(kind="coach_answer", contents=prompt)
             return self._guard_html(raw, kind="coach_answer")
         except Exception as e:
-            return f"⚠️ Trainer is busy. Try again later.\n<i>{e}</i>"
+            logger.warning("AI call failed: %s", e)
+            raise AiUnavailableError(str(e)) from e
 
     async def summarize_progress(self, pet: PetModel, training_days: int, lang: str = "ru") -> str:
         breed = pet.breed or "unknown breed"
@@ -632,7 +668,8 @@ class AiService:
             raw = await self._generate_text(kind="progress_summary", contents=prompt)
             return self._guard_html(raw, kind="progress_summary")
         except Exception as e:
-            return f"⚠️ Analysis unavailable. Try later.\n<i>{e}</i>"
+            logger.warning("AI call failed: %s", e)
+            raise AiUnavailableError(str(e)) from e
 
     async def premium_deep_analysis(
         self, pet: PetModel, training_days: int, lang: str = "ru"
@@ -667,7 +704,8 @@ class AiService:
             raw = await self._generate_text(kind="premium_deep", contents=prompt)
             return self._guard_html(raw, kind="premium_deep")
         except Exception as e:
-            return f"⚠️ Deep analysis unavailable. Try later.\n<i>{e}</i>"
+            logger.warning("AI call failed: %s", e)
+            raise AiUnavailableError(str(e)) from e
 
     async def extract_pet_profile(
         self,
@@ -742,7 +780,7 @@ class AiService:
             contents: object = [
                 types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
                 types.Part.from_text(
-                    prompt + "User sent a voice message — transcribe and extract."
+                    text=prompt + "User sent a voice message — transcribe and extract."
                 ),
             ]
         else:
@@ -765,6 +803,43 @@ class AiService:
         ]
         result["clarify_question"] = None
         return result
+
+    async def guess_breed(
+        self, photo_bytes: bytes, mime_type: str = "image/jpeg"
+    ) -> BreedGuess | None:
+        """Guess breed from a photo. None if it is not a dog, unsure, or the AI is down."""
+        prompt = (
+            "Look at the photo. Return ONLY JSON: "
+            '{"is_dog": true, "breed": "<common breed name in Russian, 1-3 words; '
+            '\'Метис\' for mixed>", "confidence": 0.0-1.0}. '
+            'If there is no dog in the photo, set is_dog=false, breed="-", confidence=0.'
+        )
+        contents = [
+            types.Part.from_bytes(data=photo_bytes, mime_type=mime_type),
+            types.Part.from_text(text=prompt),
+        ]
+        guess = await self._generate_structured(
+            kind="extract_profile", contents=contents, schema=BreedGuess
+        )
+        if guess is None or not guess.is_dog or guess.confidence < 0.5:
+            return None
+        return guess
+
+    async def extract_facts(self, question: str, answer: str, known: list[str]) -> list[str]:
+        """Durable facts about the dog from one exchange. Never raises; [] if nothing/AI down."""
+        prompt = (
+            "Extract DURABLE facts about the owner's dog from this chat exchange "
+            "(health, allergies, fears, habits, diet, routine, medication). "
+            "Skip generic advice, opinions and one-off events. Max 5, each under 120 chars, "
+            'same language as the owner. Return ONLY JSON: {"facts": [{"text": "..."}]}. '
+            'Return {"facts": []} if nothing durable.\n\n'
+            f"Already known: {'; '.join(known[:20]) or 'nothing'}\n"
+            f"OWNER: {question[:800]}\nTRAINER: {answer[:1200]}"
+        )
+        result = await self._generate_structured(
+            kind="extract_profile", contents=prompt, schema=FactExtraction
+        )
+        return [f.text for f in result.facts] if result else []
 
     async def detect_training_intent(
         self,
@@ -813,6 +888,11 @@ class AiService:
             "«сделал», «закончили», «справились», «выполнили») — ответь строго в JSON:\n"
             '{"action":"mark_done","task_hint":"<ключевое слово из названия задачи>",'
             '"message":"<1–2 подбадривающих предложения с именем питомца>"}\n\n'
+            "• Если владелец сообщает о ПРОГУЛКЕ и называет время («погуляли полчаса», "
+            "«гуляли 40 минут», «час гуляли») — ответь строго в JSON, минуты целым числом "
+            "от 5 до 240:\n"
+            '{"action":"log_walk","walk_minutes":30,"message":"<1 тёплое предложение с именем питомца>"}\n'
+            "Если время прогулки НЕ названо — не выдумывай его, ответь как обычно.\n\n"
             "• Если прислано фото питомца без явного отчёта о выполнении — похвали питомца:\n"
             '{"action":"none","message":"<2–3 предложения с похвалой и коротким советом>"}\n\n'
             "• Во всех остальных случаях (вопрос, наблюдение, просьба о совете) — ответь как кинолог:\n"
@@ -825,7 +905,7 @@ class AiService:
         if media_bytes and mime_type:
             contents: object = [
                 types.Part.from_bytes(data=media_bytes, mime_type=mime_type),
-                types.Part.from_text(prompt),
+                types.Part.from_text(text=prompt),
             ]
         else:
             contents = prompt + (f"\n\nСообщение: {text}" if text else "")
@@ -861,6 +941,7 @@ class AiService:
             return {
                 "action": "none",
                 "message": "⚠️ Не удалось обработать. Попробуй ещё раз.",
+                "_is_fallback": True,
             }
 
     @staticmethod

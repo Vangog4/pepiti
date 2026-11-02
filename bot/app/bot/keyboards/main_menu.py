@@ -17,17 +17,32 @@ LANGUAGE_OPTIONS: list[tuple[str, str]] = [
 def get_main_menu(
     is_premium: bool = False, webapp_url: str = "", lang: str = "ru"
 ) -> InlineKeyboardMarkup:
+    """Six buttons max. Everything else lives under "More" (get_more_menu)."""
     b = InlineKeyboardBuilder()
-    b.row(InlineKeyboardButton(text=t("menu.btn.training", lang), callback_data="menu_training"))
+    b.row(
+        InlineKeyboardButton(text=t("menu.btn.training", lang), callback_data="menu_training"),
+        InlineKeyboardButton(text=t("menu.btn.coach", lang), callback_data="menu_coach"),
+    )
+    b.row(
+        InlineKeyboardButton(text=t("menu.btn.health", lang), callback_data="menu_health"),
+        InlineKeyboardButton(text=t("menu.btn.tracker", lang), callback_data="menu_tracker"),
+    )
+    b.row(
+        InlineKeyboardButton(text=t("menu.btn.profile", lang), callback_data="menu_profile"),
+        InlineKeyboardButton(text=t("menu.btn.more", lang), callback_data="menu_more"),
+    )
+    return b.as_markup()
+
+
+def get_more_menu(
+    is_premium: bool = False, webapp_url: str = "", lang: str = "ru"
+) -> InlineKeyboardMarkup:
+    b = InlineKeyboardBuilder()
+    premium_key = "menu.btn.premium.active" if is_premium else "menu.btn.premium"
     b.row(
         InlineKeyboardButton(text=t("menu.btn.week_plan", lang), callback_data="menu_week_plan"),
         InlineKeyboardButton(text=t("menu.btn.stats", lang), callback_data="menu_stats"),
     )
-    b.row(
-        InlineKeyboardButton(text=t("menu.btn.coach", lang), callback_data="menu_coach"),
-        InlineKeyboardButton(text=t("menu.btn.profile", lang), callback_data="menu_profile"),
-    )
-    premium_key = "menu.btn.premium.active" if is_premium else "menu.btn.premium"
     b.row(
         InlineKeyboardButton(text=t(premium_key, lang), callback_data="menu_premium"),
         InlineKeyboardButton(text=t("settings.btn", lang), callback_data="menu_settings"),
@@ -42,13 +57,20 @@ def get_main_menu(
                 text=t("menu.btn.webapp", lang), web_app=WebAppInfo(url=webapp_url)
             )
         )
+    b.row(InlineKeyboardButton(text=t("common.back_menu.btn", lang), callback_data="menu_main"))
     return b.as_markup()
 
 
-def get_settings_keyboard(lang: str = "ru") -> InlineKeyboardMarkup:
+def get_settings_keyboard(lang: str = "ru", seasonal: bool = True) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     b.row(
         InlineKeyboardButton(text=t("settings.reminder.btn", lang), callback_data="menu_reminder")
+    )
+    b.row(
+        InlineKeyboardButton(
+            text=t("settings.seasonal.on" if seasonal else "settings.seasonal.off", lang),
+            callback_data="toggle_seasonal",
+        )
     )
     b.row(InlineKeyboardButton(text=t("profile.edit.btn", lang), callback_data="menu_edit_profile"))
     b.row(
